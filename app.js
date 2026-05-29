@@ -1,4 +1,4 @@
-﻿const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05d_M-wm_k-FEbUmBNWn7sSbd6O9MfVQc-5K3k8jQAo0UQJKrb7GHTUX7C/exec';
+const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05d_M-wm_k-FEbUmBNWn7sSbd6O9MfVQc-5K3k8jQAo0UQJKrb7GHTUX7C/exec';
   const GAS_API_URL = (window.STERILE_API_URL || document.querySelector('meta[name="gas-api-url"]')?.content || DEFAULT_GAS_API_URL).replace(/\/$/, '');
   const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
@@ -486,7 +486,7 @@
       <div class="space-y-4">
         <div class="rounded-2xl bg-slate-50 p-4">
           <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
-          <div class="mt-2 text-sm text-slate-600">ItemCode: ${escapeHtml(item.itemCode)}<br>จำนวนดวง: ${escapeHtml(copies)}</div>
+          <div class="mt-2 text-sm text-slate-600">ItemCode: ${escapeHtml(item.itemCode)}<br>จำนวนชุดพิมพ์: ${escapeHtml(copies)}<br>แต่ละชุดมี 2 ดวง: รายการ + ข้อความเตือน</div>
         </div>
         <div class="text-sm text-slate-500">กดปุ่มด้านล่างเมื่อพร้อมพิมพ์สติกเกอร์</div>
       </div>`, {
@@ -514,12 +514,19 @@
     }
     const labels = Array.from({ length: copiesCount }).map((_, index) => `
       <div class="label-sheet">
-        <div class="label-card">
+        <div class="label-card label-card-item">
           <svg id="barcode-${index}" class="barcode"></svg>
           <div id="qrcode-${index}" class="qrcode"></div>
           <div class="item-code">${escapeHtml(item.itemCode)}</div>
           <div class="item-name">${escapeHtml(item.name)}</div>
           <div class="item-expire">หมดอายุ: ${formatThaiDate(item.expireDate)}</div>
+        </div>
+      </div>
+      <div class="label-sheet">
+        <div class="label-card label-card-warning">
+          <div class="warning-title">Sterile STOCK</div>
+          <div class="warning-text">หยิบใช้กรุณาตัดจ่ายในระบบ</div>
+          <div class="warning-sub">โปรดสแกนหรือบันทึกการตัดจ่ายทันทีหลังหยิบใช้</div>
         </div>
       </div>`).join('');
 
@@ -534,13 +541,18 @@
           @page { size: 2in 1in; margin: 0; }
           html, body { width: 2in; height: 1in; margin: 0; padding: 0; overflow: hidden; font-family: Arial, sans-serif; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .label-sheet { width: 2in; height: 1in; page-break-after: always; }
-          .label-card { width: 2in; height: 1in; box-sizing: border-box; padding: 0.04in 0.06in; display: grid; grid-template-columns: 1.1fr 0.55fr; grid-template-rows: auto auto auto auto; gap: 0.02in 0.04in; align-items: center; }
+          .label-sheet { width: 2in; height: 1in; page-break-after: always; page-break-inside: avoid; }
+          .label-card { width: 2in; height: 1in; box-sizing: border-box; padding: 0.04in 0.06in; }
+          .label-card-item { display: grid; grid-template-columns: 1.1fr 0.55fr; grid-template-rows: auto auto auto auto; gap: 0.02in 0.04in; align-items: center; }
+          .label-card-warning { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border: 1px dashed #0f766e; background: linear-gradient(180deg, #f0fdfa 0%, #ecfeff 100%); }
           .barcode { grid-column: 1 / span 2; width: 100%; height: 0.28in; }
           .qrcode { grid-column: 2; grid-row: 2 / span 3; width: 0.42in; height: 0.42in; justify-self: end; }
           .item-code { grid-column: 1; font-size: 8pt; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .item-name { grid-column: 1; font-size: 6.5pt; font-weight: 700; line-height: 1.15; max-height: 0.38in; overflow: hidden; }
           .item-expire { grid-column: 1; font-size: 6pt; color: #0f766e; font-weight: 700; }
+          .warning-title { font-size: 7pt; letter-spacing: 0.08em; color: #0f766e; font-weight: 800; text-transform: uppercase; margin-bottom: 0.04in; }
+          .warning-text { font-size: 11pt; line-height: 1.1; color: #064e3b; font-weight: 800; }
+          .warning-sub { margin-top: 0.05in; font-size: 5.8pt; line-height: 1.2; color: #0f766e; font-weight: 600; }
         </style>
       </head>
       <body>
