@@ -14,7 +14,7 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
     charts: {},
     labelWindow: null,
     modal: null,
-    scanner: { stream: null, detector: null, active: false }
+    scanner: { stream: null, detector: null, reader: null, controls: null, active: false, mode: '' }
   };
 
   let booted = false;
@@ -913,35 +913,86 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
 
   /** Opens a camera scanner modal with barcode detection if the browser supports it. */
   async function openScannerModal() {
-    const supported = 'BarcodeDetector' in window && navigator.mediaDevices?.getUserMedia;
-    const body = supported
+    const canUseCamera = navigator.mediaDevices?.getUserMedia;
+    const body = canUseCamera
       ? `
         <div class="space-y-4">
           <div class="scan-box rounded-3xl p-3">
             <video id="scannerVideo" class="w-full rounded-2xl bg-black" autoplay muted playsinline></video>
           </div>
-          <div class="text-sm text-slate-500">รองรับการสแกนบาร์โค้ดจากกล้องเพื่อค้นหา ItemCode ลงในช่องค้นหาด้านบน</div>
+          <div id="scannerStatus" class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">กำลังเตรียมกล้องสำหรับสแกนบาร์โค้ด</div>
+          <div class="text-sm text-slate-500">รองรับการสแกนผ่านกล้องมือถือเป็นหลัก และมี fallback สำหรับรุ่นที่ไม่รองรับ BarcodeDetector</div>
           <button id="stopScannerBtn" class="btn-secondary w-full">หยุดสแกน</button>
         </div>`
-      : `<div class="rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">เบราว์เซอร์รุ่นนี้ยังไม่รองรับ BarcodeDetector กรุณาใช้การพิมพ์ค้นหาหรือยิงบาร์โค้ดแทน</div>`;
+      : `<div class="rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">อุปกรณ์นี้ไม่รองรับกล้องสำหรับสแกนบาร์โค้ด กรุณาใช้การพิมพ์ค้นหาหรือเครื่องยิงบาร์โค้ดแบบคีย์บอร์ดแทน</div>`;
 
     showModal('สแกนบาร์โค้ด', body, { hideFooter: true });
-    if (!supported) {
+    if (!canUseCamera) {
       return;
     }
     const stopBtn = document.getElementById('stopScannerBtn');
     stopBtn.addEventListener('click', stopScanner);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      document.getElementById('scannerStatus').textContent = 'กำลังเปิดกล้องหลังเพื่อสแกน...';
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
       const video = document.getElementById('scannerVideo');
       video.srcObject = stream;
+      await video.play();
       state.scanner.stream = stream;
-      state.scanner.detector = new BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'qr_code'] });
       state.scanner.active = true;
-      scanCameraFrame(video);
+      if (await startZxingScanner(video)) {
+        return;
+      }
+      if ('BarcodeDetector' in window) {
+        state.scanner.mode = 'bardet';
+        state.scanner.detector = new BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'codabar', 'code_39', 'itf', 'upc_a', 'upc_e', 'qr_code'] });
+        document.getElementById('scannerStatus').textContent = 'ใช้โหมด BarcodeDetector';
+        scanCameraFrame(video);
+        return;
+      }
+      document.getElementById('scannerStatus').textContent = 'เบราว์เซอร์รุ่นนี้ไม่รองรับตัวอ่านบาร์โค้ดอัตโนมัติ';
+      showToast('warning', 'สแกนอัตโนมัติไม่พร้อม', 'คุณยังพิมพ์ค้นหาหรือใช้เครื่องยิงบาร์โค้ดแบบคีย์บอร์ดได้');
     } catch (error) {
       showToast('error', 'เปิดกล้องไม่สำเร็จ', getErrorMessage(error));
       stopScanner();
+    }
+  }
+
+  /** Starts ZXing scanner if the library is available or can be loaded. */
+  async function startZxingScanner(video) {
+    try {
+      if (!window.ZXing?.BrowserMultiFormatReader) {
+        await loadExternalScriptOnce('https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js');
+      }
+      if (!window.ZXing?.BrowserMultiFormatReader) {
+        return false;
+      }
+
+      const reader = new ZXing.BrowserMultiFormatReader();
+      state.scanner.reader = reader;
+      state.scanner.mode = 'zxing';
+      document.getElementById('scannerStatus').textContent = 'ใช้โหมด ZXing Multi-Format Reader';
+      const controls = await reader.decodeFromVideoDevice(null, video, async (result, error, controller) => {
+        if (result) {
+          controller?.stop?.();
+          await handleScannerResult(result.getText());
+        }
+      });
+      state.scanner.controls = controls;
+      return true;
+    } catch (error) {
+      console.warn('ZXing scanner init failed', error);
+      state.scanner.reader = null;
+      state.scanner.controls = null;
+      state.scanner.mode = '';
+      return false;
     }
   }
 
@@ -954,10 +1005,7 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
       const codes = await state.scanner.detector.detect(video);
       if (codes && codes.length) {
         const code = codes[0].rawValue;
-        document.getElementById('dispatchSearchInput').value = code;
-        await handleDispatchSearch();
-        stopScanner();
-        closeModal();
+        await handleScannerResult(code);
         return;
       }
     } catch (error) {
@@ -969,11 +1017,70 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
   /** Stops the active scanner and releases the camera stream. */
   function stopScanner() {
     state.scanner.active = false;
+    try {
+      state.scanner.controls?.stop?.();
+    } catch (error) {
+      console.warn('scanner controls stop failed', error);
+    }
+    try {
+      state.scanner.reader?.reset?.();
+    } catch (error) {
+      console.warn('scanner reset failed', error);
+    }
     if (state.scanner.stream) {
       state.scanner.stream.getTracks().forEach((track) => track.stop());
     }
     state.scanner.stream = null;
     state.scanner.detector = null;
+    state.scanner.reader = null;
+    state.scanner.controls = null;
+    state.scanner.mode = '';
+  }
+
+  /** Handles a scanned barcode and transfers it into the search flow. */
+  async function handleScannerResult(code) {
+    const normalizedCode = String(code || '').trim();
+    if (!normalizedCode) {
+      return;
+    }
+    document.getElementById('dispatchSearchInput').value = normalizedCode;
+    await handleDispatchSearch();
+    stopScanner();
+    closeModal();
+  }
+
+  /** Loads an external script exactly once. */
+  function loadExternalScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const existing = Array.from(document.querySelectorAll('script[data-src]'))
+        .find((script) => script.dataset.src === src);
+      if (existing && existing.dataset.loaded === 'true') {
+        resolve();
+        return;
+      }
+      if (existing && existing.dataset.loading === 'true') {
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', reject, { once: true });
+        return;
+      }
+      const script = existing || document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.dataset.src = src;
+      script.dataset.loading = 'true';
+      script.onload = () => {
+        script.dataset.loaded = 'true';
+        script.dataset.loading = 'false';
+        resolve();
+      };
+      script.onerror = () => {
+        script.dataset.loading = 'false';
+        reject(new Error('ไม่สามารถโหลดไลบรารีสแกนบาร์โค้ดได้'));
+      };
+      if (!existing) {
+        document.head.appendChild(script);
+      }
+    });
   }
 
   /** Loads and renders summary analytics. */
