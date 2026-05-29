@@ -975,11 +975,11 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
         return false;
       }
 
-      const reader = new ZXing.BrowserMultiFormatReader();
+      const reader = new ZXing.BrowserMultiFormatReader(undefined, 100);
       state.scanner.reader = reader;
       state.scanner.mode = 'zxing';
       document.getElementById('scannerStatus').textContent = 'ใช้โหมด ZXing Multi-Format Reader';
-      const controls = await reader.decodeFromVideoDevice(null, video, async (result, error, controller) => {
+      const controls = await reader.decodeFromVideoElement(video, async (result, error, controller) => {
         if (result) {
           controller?.stop?.();
           await handleScannerResult(result.getText());
