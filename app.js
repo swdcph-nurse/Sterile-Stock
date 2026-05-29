@@ -516,17 +516,10 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
       <div class="label-sheet">
         <div class="label-card label-card-item">
           <svg id="barcode-${index}" class="barcode"></svg>
-          <div id="qrcode-${index}" class="qrcode"></div>
           <div class="item-code">${escapeHtml(item.itemCode)}</div>
           <div class="item-name">${escapeHtml(item.name)}</div>
           <div class="item-expire">หมดอายุ: ${formatThaiDate(item.expireDate)}</div>
-        </div>
-      </div>
-      <div class="label-sheet">
-        <div class="label-card label-card-warning">
-          <div class="warning-title">Sterile STOCK</div>
-          <div class="warning-text">หยิบใช้กรุณาตัดจ่ายในระบบ</div>
-          <div class="warning-sub">โปรดสแกนหรือบันทึกการตัดจ่ายทันทีหลังหยิบใช้</div>
+          <div class="warning-banner">หยิบใช้กรุณาตัดจ่ายในระบบ</div>
         </div>
       </div>`).join('');
 
@@ -543,27 +536,21 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .label-sheet { width: 2in; height: 1in; page-break-after: always; page-break-inside: avoid; }
           .label-card { width: 2in; height: 1in; box-sizing: border-box; padding: 0.04in 0.06in; }
-          .label-card-item { display: grid; grid-template-columns: 1.1fr 0.55fr; grid-template-rows: auto auto auto auto; gap: 0.02in 0.04in; align-items: center; }
-          .label-card-warning { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border: 1px dashed #0f766e; background: linear-gradient(180deg, #f0fdfa 0%, #ecfeff 100%); }
-          .barcode { grid-column: 1 / span 2; width: 100%; height: 0.28in; }
-          .qrcode { grid-column: 2; grid-row: 2 / span 3; width: 0.42in; height: 0.42in; justify-self: end; }
-          .item-code { grid-column: 1; font-size: 8pt; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .item-name { grid-column: 1; font-size: 6.5pt; font-weight: 700; line-height: 1.15; max-height: 0.38in; overflow: hidden; }
-          .item-expire { grid-column: 1; font-size: 6pt; color: #0f766e; font-weight: 700; }
-          .warning-title { font-size: 7pt; letter-spacing: 0.08em; color: #0f766e; font-weight: 800; text-transform: uppercase; margin-bottom: 0.04in; }
-          .warning-text { font-size: 11pt; line-height: 1.1; color: #064e3b; font-weight: 800; }
-          .warning-sub { margin-top: 0.05in; font-size: 5.8pt; line-height: 1.2; color: #0f766e; font-weight: 600; }
+          .label-card-item { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; gap: 0.01in; align-items: center; }
+          .barcode { width: 100%; height: 0.25in; }
+          .item-code { font-size: 7.6pt; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1; }
+          .item-name { font-size: 6.2pt; font-weight: 700; line-height: 1.05; max-height: 0.24in; overflow: hidden; }
+          .item-expire { font-size: 5.9pt; color: #0f766e; font-weight: 700; line-height: 1; }
+          .warning-banner { margin-top: 0.01in; padding: 0.03in 0.04in; border-radius: 0.08in; border: 1px solid #fdba74; background: #fff7ed; color: #9a3412; font-size: 7.6pt; line-height: 1.08; font-weight: 900; text-align: center; }
         </style>
       </head>
       <body>
         ${labels}
         <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
         <script>
           window.addEventListener('load', () => {
             ${Array.from({ length: copiesCount }).map((_, index) => `
               JsBarcode('#barcode-${index}', ${JSON.stringify(item.itemCode)}, { format: 'CODE128', width: 1.2, height: 28, displayValue: false, margin: 0 });
-              new QRCode(document.getElementById('qrcode-${index}'), { text: ${JSON.stringify(item.itemCode)}, width: 62, height: 62, colorDark: '#111827', colorLight: '#ffffff' });
             `).join('')}
             setTimeout(() => {
               window.focus();
