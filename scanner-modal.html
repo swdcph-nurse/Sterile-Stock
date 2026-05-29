@@ -1,0 +1,72 @@
+<div class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerTitle">
+  <div class="scanner-shell">
+    <div class="scanner-header">
+      <div>
+        <div id="scannerTitle" class="scanner-title">สแกนบาร์โค้ด</div>
+        <div class="scanner-subtitle">กล้องหลัง • โฟกัสต่อเนื่อง • รองรับมือถือและแท็บเล็ต</div>
+      </div>
+      <button type="button" class="scanner-close" data-scanner-action="close" aria-label="ปิดสแกน">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+
+    <div class="scanner-content">
+      <div class="scanner-camera-card">
+        <video id="scannerVideo" class="scanner-video" autoplay muted playsinline></video>
+        <div class="scanner-overlay-frame"></div>
+        <div class="scanner-scan-line"></div>
+      </div>
+
+      <div class="scanner-status-card">
+        <div class="scanner-status-row">
+          <div id="scannerStatus" class="scanner-status scanner-status-pulse">กำลังเตรียมกล้อง...</div>
+          <div class="scanner-actions">
+            <button type="button" id="scannerFlashBtn" class="scanner-action-btn scanner-action-btn--primary" hidden>
+              <span class="material-symbols-rounded text-base">flash_on</span> แฟลช
+            </button>
+            <button type="button" id="scannerSwitchBtn" class="scanner-action-btn">
+              <span class="material-symbols-rounded text-base">cameraswitch</span> สลับกล้อง
+            </button>
+          </div>
+        </div>
+        <div class="scanner-hint">
+          แตะให้บาร์โค้ดอยู่ในกรอบกลางจอ ระบบจะสแกนทุก 300ms และกันยิงซ้ำ 1.5 วินาที
+        </div>
+      </div>
+
+      <div id="scannerErrorPanel" class="scanner-error hidden">
+        <div class="scanner-error-title">ไม่สามารถเปิดกล้องได้</div>
+        <div id="scannerErrorText" class="scanner-error-text">
+          กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์ แล้วกด Retry เพื่อเริ่มสแกนใหม่
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" id="scannerRetryBtn" class="scanner-action-btn scanner-action-btn--primary">
+            <span class="material-symbols-rounded text-base">refresh</span> Retry
+          </button>
+          <button type="button" id="scannerPermissionHelpBtn" class="scanner-action-btn">
+            <span class="material-symbols-rounded text-base">help</span> วิธีเปิดสิทธิ์
+          </button>
+        </div>
+      </div>
+
+      <div class="scanner-manual">
+        <label class="scanner-manual-label" for="scannerManualInput">กรอกรหัสด้วยตนเอง</label>
+        <div class="scanner-manual-row">
+          <input
+            id="scannerManualInput"
+            class="scanner-manual-input"
+            type="search"
+            placeholder="พิมพ์หรือยิงด้วยเครื่องสแกนแบบคีย์บอร์ด"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            inputmode="search"
+            enterkeyhint="search"
+          >
+          <button type="button" id="scannerManualBtn" class="scanner-manual-submit">ค้นหา</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
