@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f766e">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:wght@300;400;500;600;700">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+      tailwind = { config: { theme: { extend: { fontFamily: { sans: ['IBM Plex Sans Thai', 'sans-serif'] } } } } };
+    </script>
+    <link rel="stylesheet" href="./style.css">
+    <title>Sterile STOCK</title>
+  </head>
+  <body class="bg-slate-50 text-slate-800 font-sans antialiased">
+    <div id="loadingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/30 backdrop-blur-sm">
+      <div class="glass-card flex items-center gap-3 rounded-2xl px-5 py-4 shadow-xl">
+        <div class="spinner h-5 w-5"></div>
+        <div>
+          <div class="text-sm font-semibold text-slate-900">กำลังประมวลผล</div>
+          <div class="text-xs text-slate-500">โปรดรอสักครู่…</div>
+        </div>
+      </div>
+    </div>
+    <div id="appShell" class="min-h-screen">
+      <header class="no-print sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur">
+        <div class="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div class="flex items-center gap-3">
+            <img src="./icon.png" alt="Sterile STOCK" class="h-11 w-11 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+            <div>
+              <div class="text-xs font-medium uppercase tracking-[0.24em] text-teal-700">Enterprise Inventory</div>
+              <h1 class="text-lg font-bold leading-tight text-slate-900 sm:text-xl">Sterile STOCK</h1>
+              <p class="text-xs text-slate-500 sm:text-sm">ระบบคลังเครื่องมือ และวัสดุปราศจากเชื้อ ตึกพิเศษปาริฉัตร</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="installPwaBtn" class="hidden rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 transition hover:bg-teal-100">ติดตั้งแอป</button>
+          </div>
+        </div>
+        <nav class="no-print border-t border-slate-200/60 bg-white">
+          <div class="mx-auto flex max-w-[1600px] gap-2 overflow-x-auto px-4 py-2 sm:px-6">
+            <button class="nav-tab" data-view="dashboard">แดชบอร์ด</button>
+            <button class="nav-tab" data-view="receive">รับเข้า</button>
+            <button class="nav-tab" data-view="dispatch">จ่ายออก</button>
+            <button class="nav-tab" data-view="reports">รายงานสรุป</button>
+          </div>
+        </nav>
+      </header>
+      <main class="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-6">
+<section id="view-dashboard" class="view active space-y-5">
+  <div class="glass-card rounded-3xl p-4 sm:p-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div class="space-y-2">
+        <div class="chip inline-flex items-center gap-2">
+          <span class="material-symbols-rounded text-sm">dashboard</span>
+          Dashboard Overview
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900">ภาพรวมคลังเครื่องมือ และวัสดุปราศจากเชื้อ</h2>
+        <p class="max-w-3xl text-sm leading-6 text-slate-500">
+          ดูสถานะคงคลังแบบเรียลไทม์ ค้นหาได้ทันที และกดเพื่อเปิดรายละเอียดหรือสั่งตัดจ่ายจากการ์ดสถานะได้โดยตรง
+        </p>
+      </div>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <button class="btn-primary" data-view="receive">
+          <span class="material-symbols-rounded text-base">inventory_2</span> รับเข้า
+        </button>
+        <button class="btn-secondary" data-view="dispatch">
+          <span class="material-symbols-rounded text-base">outgoing_mail</span> จ่ายออก
+        </button>
+        <button class="btn-secondary" data-view="receive" data-action="reprint-help">
+          <span class="material-symbols-rounded text-base">barcode</span> พิมพ์ย้อนหลัง
+        </button>
+        <button class="btn-secondary" data-view="reports">
+          <span class="material-symbols-rounded text-base">analytics</span> รายงานสรุป
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashboardMetrics" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"></div>
+
+  <div class="glass-card rounded-3xl p-4 sm:p-6 space-y-4">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">รายการคงคลังทั้งหมด</h3>
+        <p class="text-sm text-slate-500">ค้นหาและจัดเรียงได้จากด้านล่าง</p>
+      </div>
+      <div class="grid gap-3 md:grid-cols-3">
+        <input id="stockSearchInput" class="field" type="search" placeholder="ค้นหา ItemCode / ชื่อรายการ / สถานะ">
+        <select id="stockStatusFilter" class="field">
+          <option value="all">ทุกสถานะ</option>
+          <option value="normal">ปกติ</option>
+          <option value="expiredToday">หมดอายุวันนี้</option>
+          <option value="expiring3">ใกล้หมดอายุ 3 วัน</option>
+          <option value="expiring2">ใกล้หมดอายุ 2 วัน</option>
+          <option value="expiring1">ใกล้หมดอายุ 1 วัน</option>
+          <option value="expired">หมดอายุแล้ว</option>
+        </select>
+        <button id="stockRefreshBtn" class="btn-secondary">
+          <span class="material-symbols-rounded text-base">refresh</span> รีเฟรช
+        </button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="overflow-auto">
+        <table class="table-sticky min-w-full text-left text-sm">
+          <thead class="border-b border-slate-200 text-slate-600">
+            <tr>
+              <th class="px-4 py-3">ItemCode</th>
+              <th class="px-4 py-3">ชื่อรายการ</th>
+              <th class="px-4 py-3">รับเข้า</th>
+              <th class="px-4 py-3">นึ่ง</th>
+              <th class="px-4 py-3">หมดอายุ</th>
+              <th class="px-4 py-3 text-right">คงเหลือ</th>
+              <th class="px-4 py-3">สถานะ</th>
+              <th class="px-4 py-3 text-right">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="stockTableBody"></tbody>
+        </table>
+      </div>
+      <div id="stockPagination" class="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"></div>
+    </div>
+  </div>
+</section>
+
+<section id="view-receive" class="view space-y-5">
+  <div class="glass-card rounded-3xl p-4 sm:p-6">
+    <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <div class="chip inline-flex items-center gap-2">
+          <span class="material-symbols-rounded text-sm">add_box</span>
+          Receive System
+        </div>
+        <h2 class="mt-2 text-2xl font-bold text-slate-900">ระบบรับเข้า</h2>
+        <p class="text-sm text-slate-500">สร้าง ItemCode อัตโนมัติ บันทึก Stock และเปิดพิมพ์สติ๊กเกอร์ Thermal ทันที</p>
+      </div>
+      <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <div class="font-semibold text-slate-900">Format</div>
+        <div>STK-YYYYMMDD-XXXX</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+    <div class="glass-card rounded-3xl p-5 sm:p-6">
+      <form id="receiveForm" class="grid gap-4">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">ItemCode</label>
+            <input id="receiveItemCode" class="field" type="text" readonly>
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">วันที่รับเข้า</label>
+            <input id="receiveDate" class="field" type="date">
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">ชื่อรายการ</label>
+            <input id="receiveItemSearch" class="field" type="search" placeholder="พิมพ์ชื่อรายการ / คำสำคัญเพื่อค้นหา" autocomplete="off">
+            <select id="receiveItemName" class="hidden" aria-hidden="true" tabindex="-1"></select>
+            <div id="receiveItemResults" class="mt-2 hidden max-h-64 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-lg"></div>
+            <div class="mt-2 text-xs text-slate-500">พิมพ์คำค้นแล้วเลือกจากรายการที่แนะนำได้ทันที</div>
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">จำนวนรับ</label>
+            <input id="receiveQuantity" class="field" type="number" min="1" step="1" placeholder="0">
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">วันที่นึ่ง</label>
+            <input id="receiveSterileDate" class="field" type="date">
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">วันที่หมดอายุ</label>
+            <input id="receiveExpireDate" class="field" type="date">
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">หมายเหตุ</label>
+          <textarea id="receiveNote" class="field min-h-[100px]" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button id="receiveSubmitBtn" type="submit" class="btn-primary">
+            <span class="material-symbols-rounded text-base">save</span> บันทึกและพิมพ์สติ๊กเกอร์
+          </button>
+          <button id="receiveResetBtn" type="button" class="btn-secondary">
+            <span class="material-symbols-rounded text-base">restart_alt</span> ล้างฟอร์ม
+          </button>
+          <div id="receiveValidationHint" class="text-sm text-slate-500"></div>
+        </div>
+      </form>
+    </div>
+
+    <div class="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">ตัวอย่างก่อนพิมพ์</h3>
+        <p class="text-sm text-slate-500">รายการนี้จะถูกนำไปพิมพ์บน Thermal Printer ขนาด 2 x 1 นิ้ว</p>
+      </div>
+      <div id="receivePreviewCard" class="scan-box rounded-2xl p-4 text-sm text-slate-500">
+        <div class="text-center text-slate-400">กรอกข้อมูลแล้วระบบจะสร้างภาพพิมพ์ให้ที่นี่</div>
+      </div>
+      <div class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+        <div class="font-semibold text-slate-900">คำแนะนำ</div>
+        <ul class="mt-2 list-disc space-y-1 pl-5">
+          <li>ระบบจะพิมพ์ตามจำนวนรับอัตโนมัติ</li>
+          <li>สามารถสั่งพิมพ์ย้อนหลังได้จากตารางคงคลัง</li>
+          <li>รองรับ barcode และ QR code</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="view-dispatch" class="view space-y-5">
+  <div class="glass-card rounded-3xl p-4 sm:p-6">
+    <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <div class="chip inline-flex items-center gap-2">
+          <span class="material-symbols-rounded text-sm">outgoing_mail</span>
+          Dispatch System
+        </div>
+        <h2 class="mt-2 text-2xl font-bold text-slate-900">ระบบจ่ายออก</h2>
+        <p class="text-sm text-slate-500">ค้นหาจากชื่อหรือ ItemCode ได้ทั้งพิมพ์ ปุ่มยิงบาร์โค้ด และกล้องมือถือ</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="openScannerBtn" class="btn-secondary">
+          <span class="material-symbols-rounded text-base">qr_code_scanner</span> เปิดกล้องสแกน
+        </button>
+        <button id="dispatchRefreshBtn" class="btn-secondary">
+          <span class="material-symbols-rounded text-base">refresh</span> รีเฟรช
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+    <div class="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
+      <div>
+        <label class="mb-2 block text-sm font-semibold text-slate-700">ค้นหารายการ</label>
+        <div class="flex gap-2">
+          <input id="dispatchSearchInput" class="field" type="search" placeholder="สแกน Barcode หรือพิมพ์ชื่อรายการ/ItemCode">
+          <button id="dispatchSearchBtn" class="btn-primary whitespace-nowrap">
+            <span class="material-symbols-rounded text-base">search</span> ค้นหา
+          </button>
+        </div>
+      </div>
+
+      <div id="dispatchSearchResults" class="space-y-3"></div>
+
+      <div id="dispatchSelectedCard" class="scan-box rounded-3xl p-4 text-sm text-slate-500">
+        <div class="text-center text-slate-400">ค้นหารายการเพื่อแสดงข้อมูลก่อนจ่ายออก</div>
+      </div>
+    </div>
+
+    <div class="glass-card rounded-3xl p-5 sm:p-6">
+      <form id="dispatchForm" class="grid gap-4">
+        <input id="dispatchItemCode" type="hidden">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">วันที่จ่ายออก</label>
+            <input id="dispatchDate" class="field" type="date">
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-semibold text-slate-700">จำนวนจ่ายออก</label>
+            <input id="dispatchQuantity" class="field" type="number" min="1" step="1" placeholder="0">
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">ประเภทการจ่าย</label>
+          <select id="dispatchType" class="field">
+            <option value="">-- เลือกประเภท --</option>
+            <option value="ใช้งาน">ใช้งาน</option>
+            <option value="หมุนเวียนไปใช้ตึกอื่น">หมุนเวียนไปใช้ตึกอื่น</option>
+            <option value="ส่ง Re-Sterile">ส่ง Re-Sterile</option>
+            <option value="ใช้แล้วไม่ได้ตัดจ่าย">ใช้แล้วไม่ได้ตัดจ่าย</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">หมายเหตุ</label>
+          <textarea id="dispatchNote" class="field min-h-[96px]" placeholder="หมายเหตุการตัดจ่าย"></textarea>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button id="dispatchSubmitBtn" type="submit" class="btn-danger">
+            <span class="material-symbols-rounded text-base">check_circle</span> บันทึกการจ่ายออก
+          </button>
+          <button id="dispatchClearBtn" type="button" class="btn-secondary">
+            <span class="material-symbols-rounded text-base">delete_sweep</span> ล้างข้อมูล
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="view-reports" class="view space-y-5">
+  <div class="glass-card rounded-3xl p-4 sm:p-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <div class="chip inline-flex items-center gap-2">
+          <span class="material-symbols-rounded text-sm">analytics</span>
+          Summary Analytics
+        </div>
+        <h2 class="mt-2 text-2xl font-bold text-slate-900">หน้าสรุปรายงาน</h2>
+        <p class="text-sm text-slate-500">วิเคราะห์ตามปีงบประมาณ ตุลาคม → กันยายน พร้อม Export และ Print</p>
+      </div>
+      <div class="grid gap-3 md:grid-cols-3">
+        <select id="reportFiscalYear" class="field"></select>
+        <select id="reportMonth" class="field">
+          <option value="all">ทุกเดือน</option>
+          <option value="1">เดือน 1</option>
+          <option value="2">เดือน 2</option>
+          <option value="3">เดือน 3</option>
+          <option value="4">เดือน 4</option>
+          <option value="5">เดือน 5</option>
+          <option value="6">เดือน 6</option>
+          <option value="7">เดือน 7</option>
+          <option value="8">เดือน 8</option>
+          <option value="9">เดือน 9</option>
+          <option value="10">เดือน 10</option>
+          <option value="11">เดือน 11</option>
+          <option value="12">เดือน 12</option>
+        </select>
+        <div class="flex flex-wrap gap-2">
+          <button id="reportExportCsvBtn" class="btn-secondary">
+            <span class="material-symbols-rounded text-base">download</span> Excel
+          </button>
+          <button id="reportPrintBtn" class="btn-secondary">
+            <span class="material-symbols-rounded text-base">print</span> Print
+          </button>
+          <button id="reportPdfBtn" class="btn-primary">
+            <span class="material-symbols-rounded text-base">picture_as_pdf</span> PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reportStats" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"></div>
+
+  <div class="grid gap-5 xl:grid-cols-3">
+    <div class="glass-card rounded-3xl p-5 xl:col-span-2">
+      <h3 class="mb-4 text-lg font-bold text-slate-900">กราฟสรุปรายเดือน</h3>
+      <div class="grid gap-5 lg:grid-cols-2">
+        <div class="rounded-2xl bg-slate-50 p-3">
+          <canvas id="chartBar" height="220"></canvas>
+        </div>
+        <div class="rounded-2xl bg-slate-50 p-3">
+          <canvas id="chartLine" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="glass-card rounded-3xl p-5">
+      <h3 class="mb-4 text-lg font-bold text-slate-900">สัดส่วนการจ่ายออก</h3>
+      <div class="rounded-2xl bg-slate-50 p-3">
+        <canvas id="chartPie" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-card rounded-3xl p-5 sm:p-6 space-y-4">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">รายละเอียดรายการประจำเดือน</h3>
+        <p class="text-sm text-slate-500">รายการที่แสดงจะถูกกรองตามปีงบประมาณและเดือนที่เลือก</p>
+      </div>
+      <span id="reportRangeLabel" class="chip">-</span>
+    </div>
+    <div class="table-wrap">
+      <div class="overflow-auto">
+        <table class="min-w-full text-left text-sm">
+          <thead class="border-b border-slate-200 text-slate-600">
+            <tr>
+              <th class="px-4 py-3">ItemCode</th>
+              <th class="px-4 py-3">ชื่อรายการ</th>
+              <th class="px-4 py-3">วันที่</th>
+              <th class="px-4 py-3 text-right">จำนวน</th>
+              <th class="px-4 py-3">ประเภท</th>
+              <th class="px-4 py-3">หมายเหตุ</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="view-print" class="print-only">
+  <div id="printArea"></div>
+  <div id="reportPrintArea" class="print-area hidden"></div>
+</section>
+
+      </main>
+    </div>
+    <div id="modalRoot" class="no-print"></div>
+    <div id="toastRoot" class="no-print"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
