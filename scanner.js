@@ -1,11 +1,12 @@
 (() => {
   const LIBRARY_URLS = [
     'https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.0/umd/index.min.js',
-    'https://unpkg.com/@zxing/browser@0.2.0'
+    'https://unpkg.com/@zxing/browser@0.2.0/umd/index.min.js'
   ];
 
-  const FORMAT_NAMES = ['CODE_128', 'CODE_39', 'EAN_13', 'QR_CODE'];
-  const DEFAULT_STATUS = 'กำลังเตรียมกล้องหลังเพื่อสแกน...';
+  const DEFAULT_STATUS = 'กำลังเปิดกล้องหลังเพื่อสแกน QR...';
+  const DUPLICATE_WINDOW_MS = 1500;
+  const SCAN_INTERVAL_MS = 300;
 
   const state = {
     overlay: null,
@@ -22,7 +23,6 @@
     reader: null,
     controls: null,
     stream: null,
-    active: false,
     facingMode: 'environment',
     torchEnabled: false,
     lastScanValue: '',
@@ -32,14 +32,12 @@
     onStatus: null
   };
 
-  const api = {
+  window.SterileBarcodeScanner = {
     open,
     close,
     destroy: close,
     isOpen: () => Boolean(state.overlay)
   };
-
-  window.SterileBarcodeScanner = api;
 
   window.addEventListener('pagehide', () => close());
   document.addEventListener('visibilitychange', () => {
@@ -57,7 +55,7 @@
     state.lastScanValue = '';
     state.lastScanAt = 0;
 
-    state.overlay = await createOverlay();
+    state.overlay = createOverlay();
     document.body.appendChild(state.overlay);
     bindOverlayEvents();
 
@@ -93,33 +91,15 @@
     state.onClose = null;
   }
 
-  async function createOverlay() {
-    const template = await loadTemplateHtml();
+  function createOverlay() {
     const wrapper = document.createElement('div');
-    wrapper.innerHTML = template.trim();
-    return wrapper.firstElementChild;
-  }
-
-  async function loadTemplateHtml() {
-    try {
-      const response = await fetch('./scanner-modal.html', { cache: 'no-store' });
-      if (response.ok) {
-        return await response.text();
-      }
-    } catch (error) {
-      console.warn('scanner modal template fetch failed', error);
-    }
-    return defaultTemplateHtml();
-  }
-
-  function defaultTemplateHtml() {
-    return `
+    wrapper.innerHTML = `
       <div class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerTitle">
         <div class="scanner-shell">
           <div class="scanner-header">
             <div>
-              <div id="scannerTitle" class="scanner-title">สแกนบาร์โค้ด</div>
-              <div class="scanner-subtitle">กล้องหลัง • โฟกัสต่อเนื่อง • รองรับมือถือและแท็บเล็ต</div>
+              <div id="scannerTitle" class="scanner-title">สแกน QR Code</div>
+              <div class="scanner-subtitle">กล้องหลัง • QR เท่านั้น • พร้อมใช้บนมือถือ</div>
             </div>
             <button type="button" class="scanner-close" data-scanner-action="close" aria-label="ปิดสแกน">
               <span class="material-symbols-rounded">close</span>
@@ -128,7 +108,7 @@
           <div class="scanner-content">
             <div class="scanner-camera-card">
               <video id="scannerVideo" class="scanner-video" autoplay muted playsinline></video>
-              <div class="scanner-overlay-frame"></div>
+              <div class="scanner-overlay-frame scanner-overlay-frame--qr"></div>
               <div class="scanner-scan-line"></div>
             </div>
             <div class="scanner-status-card">
@@ -144,7 +124,7 @@
                 </div>
               </div>
               <div class="scanner-hint">
-                แตะให้บาร์โค้ดอยู่ในกรอบกลางจอ ระบบจะสแกนทุก 300ms และกันยิงซ้ำ 1.5 วินาที
+                วาง QR ให้อยู่ในกรอบกลางจอ ระบบจะอ่านทุก ${SCAN_INTERVAL_MS}ms และกันยิงซ้ำ ${DUPLICATE_WINDOW_MS / 1000} วินาที
               </div>
             </div>
             <div id="scannerErrorPanel" class="scanner-error hidden">
@@ -162,13 +142,14 @@
             <div class="scanner-manual">
               <label class="scanner-manual-label" for="scannerManualInput">กรอกรหัสด้วยตนเอง</label>
               <div class="scanner-manual-row">
-                <input id="scannerManualInput" class="scanner-manual-input" type="search" placeholder="พิมพ์หรือยิงด้วยเครื่องสแกนแบบคีย์บอร์ด" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search">
+                <input id="scannerManualInput" class="scanner-manual-input" type="search" placeholder="พิมพ์ ItemCode หรือยิงด้วยเครื่องสแกนแบบคีย์บอร์ด" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search">
                 <button type="button" id="scannerManualBtn" class="scanner-manual-submit">ค้นหา</button>
               </div>
             </div>
           </div>
         </div>
       </div>`;
+    return wrapper.firstElementChild;
   }
 
   function bindOverlayEvents() {
@@ -217,11 +198,11 @@
           return window.ZXingBrowser;
         }
       } catch (error) {
-        console.warn('load scanner library failed', src, error);
+        console.warn('load QR scanner library failed', src, error);
       }
     }
 
-    throw new Error('ไม่สามารถโหลดไลบรารีสแกนบาร์โค้ดได้');
+    throw new Error('ไม่สามารถโหลดไลบรารีสแกน QR ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
   }
 
   function loadScriptOnce(src) {
@@ -265,18 +246,11 @@
     const barcodeFormat = zxing?.BarcodeFormat || window.ZXing?.BarcodeFormat || null;
     const hints = new Map();
 
-    if (decodeHintType && barcodeFormat) {
-      if (decodeHintType.TRY_HARDER) {
-        hints.set(decodeHintType.TRY_HARDER, true);
-      }
-      if (decodeHintType.POSSIBLE_FORMATS) {
-        const formats = FORMAT_NAMES
-          .map((name) => barcodeFormat[name])
-          .filter(Boolean);
-        if (formats.length) {
-          hints.set(decodeHintType.POSSIBLE_FORMATS, formats);
-        }
-      }
+    if (decodeHintType?.TRY_HARDER) {
+      hints.set(decodeHintType.TRY_HARDER, true);
+    }
+    if (decodeHintType?.POSSIBLE_FORMATS && barcodeFormat?.QR_CODE) {
+      hints.set(decodeHintType.POSSIBLE_FORMATS, [barcodeFormat.QR_CODE]);
     }
 
     return hints;
@@ -310,38 +284,37 @@
   }
 
   async function startCamera() {
-    state.active = true;
     state.status.textContent = DEFAULT_STATUS;
     state.status.classList.add('scanner-status-pulse');
     state.errorPanel.classList.add('hidden');
     state.overlay.classList.remove('scanner-error-mode');
 
     const zxing = window.ZXingBrowser;
-    const hints = buildHints();
-    state.reader = new zxing.BrowserMultiFormatReader(hints, 300);
+    const ReaderClass = zxing.BrowserQRCodeReader || zxing.BrowserMultiFormatReader;
+    state.reader = new ReaderClass(buildHints(), SCAN_INTERVAL_MS);
+
     try {
       state.controls = await state.reader.decodeFromConstraints(
         buildConstraints(),
         state.video,
         async (result, error, controls) => {
           if (error && error.name && error.name !== 'NotFoundException') {
-            console.warn('scanner decode error', error);
-          }
-          if (result && typeof result.getText === 'function') {
-            await handleDetection(result.getText());
+            console.warn('QR decode error', error);
           }
           if (controls) {
             state.controls = controls;
+          }
+          if (result && typeof result.getText === 'function') {
+            await handleDetection(result.getText());
           }
         }
       );
 
       await waitForVideoReady();
       await tuneCameraTrack();
-      state.status.textContent = 'พร้อมสแกน';
+      state.status.textContent = 'พร้อมสแกน QR';
       state.status.classList.remove('scanner-status-pulse');
       updateTorchButton();
-      state.manualInput?.focus({ preventScroll: true });
       emitStatus();
     } catch (error) {
       stopCamera();
@@ -361,7 +334,6 @@
   }
 
   function stopCamera() {
-    state.active = false;
     try {
       state.controls?.stop?.();
     } catch (error) {
@@ -389,10 +361,7 @@
 
   async function waitForVideoReady() {
     const video = state.video;
-    if (!video) {
-      return;
-    }
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    if (!video || video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       return;
     }
     await new Promise((resolve) => {
@@ -407,30 +376,28 @@
   }
 
   async function tuneCameraTrack() {
-    const video = state.video;
-    const track = video?.srcObject?.getVideoTracks?.()[0];
+    const track = state.video?.srcObject?.getVideoTracks?.()[0];
     if (!track) {
       return;
     }
 
-    state.stream = video.srcObject;
+    state.stream = state.video.srcObject;
     const capabilities = track.getCapabilities?.() || {};
     const advanced = [];
 
-    if (capabilities.focusMode && Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes('continuous')) {
+    if (Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes('continuous')) {
       advanced.push({ focusMode: 'continuous' });
     }
-    if (capabilities.exposureMode && Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.includes('continuous')) {
+    if (Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.includes('continuous')) {
       advanced.push({ exposureMode: 'continuous' });
     }
-    if (capabilities.whiteBalanceMode && Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.includes('continuous')) {
+    if (Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.includes('continuous')) {
       advanced.push({ whiteBalanceMode: 'continuous' });
     }
-
     if (capabilities.zoom) {
       const minZoom = Number(capabilities.zoom.min || 1);
       const maxZoom = Number(capabilities.zoom.max || 1);
-      const targetZoom = Math.max(minZoom, Math.min(maxZoom, 2));
+      const targetZoom = Math.max(minZoom, Math.min(maxZoom, 1.7));
       if (targetZoom > minZoom) {
         advanced.push({ zoom: targetZoom });
       }
@@ -440,7 +407,7 @@
       try {
         await track.applyConstraints({ advanced });
       } catch (error) {
-        console.warn('apply advanced camera constraints failed', error);
+        console.warn('apply camera constraints failed', error);
       }
     }
   }
@@ -498,7 +465,7 @@
     }
 
     const now = Date.now();
-    if (state.lastScanValue === value && now - state.lastScanAt < 1500) {
+    if (state.lastScanValue === value && now - state.lastScanAt < DUPLICATE_WINDOW_MS) {
       return;
     }
     state.lastScanValue = value;
@@ -518,7 +485,7 @@
 
   function vibrateSuccess() {
     try {
-      navigator.vibrate?.(60);
+      navigator.vibrate?.(80);
     } catch (error) {
       console.warn('vibrate failed', error);
     }
@@ -534,7 +501,7 @@
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.value = 920;
+      osc.frequency.value = 1040;
       gain.gain.value = 0.0001;
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -560,19 +527,19 @@
   }
 
   function showPermissionHelp() {
-    state.errorText.textContent = 'บนมือถือ: เปิดการอนุญาตกล้องในแถบ Address หรือ Settings ของเบราว์เซอร์ แล้วกด Retry อีกครั้ง';
+    state.errorText.textContent = 'บนมือถือให้เปิดสิทธิ์กล้องจากแถบ Address หรือ Settings ของเบราว์เซอร์ แล้วกด Retry อีกครั้ง หากใช้ iPhone ให้เปิดผ่าน Safari และอนุญาต Camera';
   }
 
   function getReadableError(error) {
     const message = error && error.message ? String(error.message) : String(error || 'ไม่สามารถเปิดกล้องได้');
     if (/NotAllowedError|Permission/i.test(message)) {
-      return 'เบราว์เซอร์ยังไม่อนุญาตให้ใช้กล้อง กรุณาแตะ Allow Camera แล้วกด Retry';
+      return 'เบราว์เซอร์ยังไม่อนุญาตให้ใช้กล้อง กรุณากด Allow Camera แล้วกด Retry';
     }
     if (/NotFoundError|OverconstrainedError/i.test(message)) {
-      return 'ไม่พบกล้องหลังที่รองรับ ลองสลับกล้องหรือเปิดด้วยเบราว์เซอร์ Chrome/Safari เวอร์ชันล่าสุด';
+      return 'ไม่พบกล้องที่รองรับ ลองกดสลับกล้อง หรือเปิดด้วย Chrome/Safari เวอร์ชันล่าสุด';
     }
     if (/NotReadableError|AbortError/i.test(message)) {
-      return 'กล้องอาจถูกใช้งานอยู่โดยแอปอื่น กรุณาปิดแอปที่ใช้กล้องแล้วลองใหม่';
+      return 'กล้องอาจถูกใช้งานโดยแอปอื่น กรุณาปิดแอปที่ใช้กล้องแล้วลองใหม่';
     }
     return message;
   }
