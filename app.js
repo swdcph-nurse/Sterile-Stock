@@ -487,7 +487,7 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
       <div class="space-y-4">
         <div class="rounded-2xl bg-slate-50 p-4">
           <div class="font-bold text-slate-900">${escapeHtml(item.name)}</div>
-          <div class="mt-2 text-sm text-slate-600">ItemCode: ${escapeHtml(item.itemCode)}<br>จำนวนชุดพิมพ์: ${escapeHtml(copies)}<br>แต่ละชุดมี 2 ดวง: รายการ + ข้อความเตือน</div>
+          <div class="mt-2 text-sm text-slate-600">ItemCode: ${escapeHtml(item.itemCode)}<br>จำนวนสติกเกอร์: ${escapeHtml(copies)}<br>สติกเกอร์มี QR Code ขนาดใหญ่ด้านขวา และข้อมูลรายการด้านซ้าย</div>
         </div>
         <div class="text-sm text-slate-500">กดปุ่มด้านล่างเมื่อพร้อมพิมพ์สติกเกอร์</div>
       </div>`, {
@@ -516,11 +516,16 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
     const labels = Array.from({ length: copiesCount }).map((_, index) => `
       <div class="label-sheet">
         <div class="label-card label-card-item">
-          <svg id="barcode-${index}" class="barcode"></svg>
-          <div class="item-code">${escapeHtml(item.itemCode)}</div>
-          <div class="item-name">${escapeHtml(item.name)}</div>
-          <div class="item-expire">หมดอายุ: ${formatThaiDate(item.expireDate)}</div>
-          <div class="warning-banner">หยิบใช้กรุณาตัดจ่ายในระบบ</div>
+          <div class="label-info">
+            <div class="label-caption">Sterile STOCK</div>
+            <div class="item-code">${escapeHtml(item.itemCode)}</div>
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            <div class="item-expire">หมดอายุ: ${formatThaiDate(item.expireDate)}</div>
+            <div class="warning-banner">หยิบใช้กรุณาตัดจ่ายในระบบ</div>
+          </div>
+          <div class="qr-panel">
+            <div id="qr-${index}" class="qr-code"></div>
+          </div>
         </div>
       </div>`).join('');
 
@@ -536,22 +541,30 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
           html, body { width: 2in; height: 1in; margin: 0; padding: 0; overflow: hidden; font-family: Arial, sans-serif; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .label-sheet { width: 2in; height: 1in; page-break-after: always; page-break-inside: avoid; }
-          .label-card { width: 2in; height: 1in; box-sizing: border-box; padding: 0.04in 0.06in; }
-          .label-card-item { display: grid; grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; gap: 0.01in; align-items: center; }
-          .barcode { width: 100%; height: 0.25in; }
-          .item-code { font-size: 7.6pt; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1; }
-          .item-name { font-size: 6.2pt; font-weight: 700; line-height: 1.05; max-height: 0.24in; overflow: hidden; }
-          .item-expire { font-size: 5.9pt; color: #0f766e; font-weight: 700; line-height: 1; }
-          .warning-banner { margin-top: 0.01in; padding: 0.03in 0.04in; border-radius: 0.08in; border: 1px solid #fdba74; background: #fff7ed; color: #9a3412; font-size: 7.6pt; line-height: 1.08; font-weight: 900; text-align: center; }
+          .label-card { width: 2in; height: 1in; box-sizing: border-box; padding: 0.05in; }
+          .label-card-item { display: grid; grid-template-columns: 1.05in 0.82in; gap: 0.04in; align-items: center; }
+          .label-info { min-width: 0; height: 0.9in; display: flex; flex-direction: column; justify-content: space-between; }
+          .label-caption { font-size: 4.7pt; font-weight: 800; color: #0f766e; line-height: 1; letter-spacing: 0; }
+          .item-code { font-size: 7.4pt; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1; }
+          .item-name { font-size: 6.1pt; font-weight: 800; line-height: 1.08; max-height: 0.25in; overflow: hidden; }
+          .item-expire { font-size: 5.8pt; color: #0f766e; font-weight: 800; line-height: 1; }
+          .warning-banner { padding: 0.025in 0.03in; border-radius: 0.05in; border: 1px solid #fb923c; background: #fff7ed; color: #9a3412; font-size: 6.8pt; line-height: 1.08; font-weight: 900; text-align: center; }
+          .qr-panel { width: 0.82in; height: 0.9in; display: flex; align-items: center; justify-content: center; }
+          .qr-code, .qr-code img, .qr-code canvas { width: 0.78in !important; height: 0.78in !important; display: block; }
         </style>
       </head>
       <body>
         ${labels}
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+        <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
         <script>
           window.addEventListener('load', () => {
             ${Array.from({ length: copiesCount }).map((_, index) => `
-              JsBarcode('#barcode-${index}', ${JSON.stringify(item.itemCode)}, { format: 'CODE128', width: 1.2, height: 28, displayValue: false, margin: 0 });
+              new QRCode(document.getElementById('qr-${index}'), {
+                text: ${JSON.stringify(item.itemCode)},
+                width: 148,
+                height: 148,
+                correctLevel: QRCode.CorrectLevel.M
+              });
             `).join('')}
             setTimeout(() => {
               window.focus();
