@@ -4,7 +4,7 @@
     'https://unpkg.com/@zxing/browser@0.2.0/umd/index.min.js'
   ];
 
-  const DEFAULT_STATUS = 'กำลังเปิดกล้องหลังเพื่อสแกน QR...';
+  const DEFAULT_STATUS = 'กำลังเปิดกล้องเพื่อสแกน QR...';
   const DUPLICATE_WINDOW_MS = 1500;
   const SCAN_INTERVAL_MS = 300;
 
@@ -99,7 +99,7 @@
           <div class="scanner-header">
             <div>
               <div id="scannerTitle" class="scanner-title">สแกน QR Code</div>
-              <div class="scanner-subtitle">กล้องหลัง • QR เท่านั้น • พร้อมใช้บนมือถือ</div>
+              <div class="scanner-subtitle">กล้องหลัก • พร้อมใช้บนมือถือ</div>
             </div>
             <button type="button" class="scanner-close" data-scanner-action="close" aria-label="ปิดสแกน">
               <span class="material-symbols-rounded">close</span>
@@ -124,15 +124,15 @@
                 </div>
               </div>
               <div class="scanner-hint">
-                วาง QR ให้อยู่ในกรอบกลางจอ ระบบจะอ่านทุก ${SCAN_INTERVAL_MS}ms และกันยิงซ้ำ ${DUPLICATE_WINDOW_MS / 1000} วินาที
+                วางรหัสให้อยู่ในกรอบกลางจอ ระบบจะอ่านทุก ${SCAN_INTERVAL_MS}ms และกันยิงซ้ำ ${DUPLICATE_WINDOW_MS / 1000} วินาที
               </div>
             </div>
             <div id="scannerErrorPanel" class="scanner-error hidden">
               <div class="scanner-error-title">ไม่สามารถเปิดกล้องได้</div>
-              <div id="scannerErrorText" class="scanner-error-text">กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์ แล้วกด Retry เพื่อเริ่มสแกนใหม่</div>
+              <div id="scannerErrorText" class="scanner-error-text">กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์ แล้วกด Retry เพื่อเริ่มสแกนใหม่ (ใช้ได้เฉพาะ https เท่านั้น)</div>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button type="button" id="scannerRetryBtn" class="scanner-action-btn scanner-action-btn--primary">
-                  <span class="material-symbols-rounded text-base">refresh</span> Retry
+                  <span class="material-symbols-rounded text-base">refresh</span> ลองใหม่
                 </button>
                 <button type="button" id="scannerPermissionHelpBtn" class="scanner-action-btn">
                   <span class="material-symbols-rounded text-base">help</span> วิธีเปิดสิทธิ์
@@ -202,7 +202,7 @@
       }
     }
 
-    throw new Error('ไม่สามารถโหลดไลบรารีสแกน QR ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    throw new Error('ไม่สามารถโหลดไลบรารีสแกนได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
   }
 
   function loadScriptOnce(src) {
@@ -249,22 +249,26 @@
     if (decodeHintType?.TRY_HARDER) {
       hints.set(decodeHintType.TRY_HARDER, true);
     }
-    if (decodeHintType?.POSSIBLE_FORMATS && barcodeFormat?.QR_CODE) {
-      hints.set(decodeHintType.POSSIBLE_FORMATS, [barcodeFormat.QR_CODE]);
+    // 💡 รองรับทั้ง QR_CODE และ CODE_128 (บาร์โค้ดแท่ง) เพื่อความยืดหยุ่น
+    if (decodeHintType?.POSSIBLE_FORMATS && barcodeFormat) {
+      hints.set(decodeHintType.POSSIBLE_FORMATS, [barcodeFormat.QR_CODE, barcodeFormat.CODE_128]);
     }
 
     return hints;
   }
 
+  // 💡 ปรับปรุง constraints ใหม่เพื่อลดปัญหา OverconstrainedError ในคอมพิวเตอร์และมือถือบางรุ่น
   function buildConstraints() {
     const preset = choosePreset();
     return {
       audio: false,
       video: {
-        facingMode: { ideal: state.facingMode },
-        width: { ideal: preset.width },
-        height: { ideal: preset.height },
-        frameRate: { ideal: preset.frameRate, max: preset.frameRate }
+        // ใช้ ideal แทน exact เพื่อไม่ให้พังถ้าหากไม่พบกล้องหลัง
+        facingMode: state.facingMode,
+        width: { ideal: preset.width, min: 640 },
+        height: { ideal: preset.height, min: 480 },
+        // หากต้องการปรับให้ Auto Focus ต่อเนื่องให้เพิ่ม advanced
+        advanced: [{ focusMode: 'continuous' }]
       }
     };
   }
@@ -275,12 +279,12 @@
     const shortestSide = Math.min(window.screen?.width || 1280, window.screen?.height || 720);
 
     if (memory <= 2 || cores <= 4 || shortestSide <= 720) {
-      return { width: 640, height: 480, frameRate: 12 };
+      return { width: 640, height: 480, frameRate: 15 };
     }
     if (memory <= 4 || cores <= 6) {
-      return { width: 1280, height: 720, frameRate: 15 };
+      return { width: 1280, height: 720, frameRate: 24 };
     }
-    return { width: 1920, height: 1080, frameRate: 18 };
+    return { width: 1920, height: 1080, frameRate: 30 };
   }
 
   async function startCamera() {
@@ -289,13 +293,28 @@
     state.errorPanel.classList.add('hidden');
     state.overlay.classList.remove('scanner-error-mode');
 
+    // 💡 ป้องกันกรณีเรียกใช้งานผ่าน HTTP (ไม่ใช่ HTTPS) แล้ว getUserMedia ไม่ทำงาน
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const isHttp = window.location.protocol === 'http:';
+      const msg = isHttp 
+        ? 'ไม่สามารถเปิดกล้องได้ เบราว์เซอร์ต้องการการเชื่อมต่อแบบ HTTPS'
+        : 'เบราว์เซอร์นี้ไม่รองรับการเปิดกล้อง';
+      throw new Error(msg);
+    }
+
     const zxing = window.ZXingBrowser;
-    const ReaderClass = zxing.BrowserQRCodeReader || zxing.BrowserMultiFormatReader;
+    const ReaderClass = zxing.BrowserMultiFormatReader; // ใช้ Multi รองรับได้หลากหลายกว่า
     state.reader = new ReaderClass(buildHints(), SCAN_INTERVAL_MS);
 
     try {
-      state.controls = await state.reader.decodeFromConstraints(
-        buildConstraints(),
+      // 💡 เปิด Stream ก่อนส่งให้ zxing เพื่อให้แน่ใจว่ากล้องพร้อมและเล่นวิดีโอได้
+      const constraints = buildConstraints();
+      state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      state.video.srcObject = state.stream;
+      await state.video.play();
+
+      state.controls = await state.reader.decodeFromStream(
+        state.stream,
         state.video,
         async (result, error, controls) => {
           if (error && error.name && error.name !== 'NotFoundException') {
@@ -312,7 +331,7 @@
 
       await waitForVideoReady();
       await tuneCameraTrack();
-      state.status.textContent = 'พร้อมสแกน QR';
+      state.status.textContent = 'พร้อมสแกน QR / บาร์โค้ด';
       state.status.classList.remove('scanner-status-pulse');
       updateTorchButton();
       emitStatus();
