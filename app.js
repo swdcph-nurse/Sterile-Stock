@@ -545,7 +545,10 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
           .label-card-item { display: grid; grid-template-columns: 1.05in 0.82in; gap: 0.04in; align-items: center; }
           .label-info { min-width: 0; height: 0.9in; display: flex; flex-direction: column; justify-content: space-between; }
           .label-caption { font-size: 4.7pt; font-weight: 800; color: #0f766e; line-height: 1; letter-spacing: 0; }
-          .item-code { font-size: 7.4pt; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1; }
+          
+          /* 💡 จุดที่แก้ไข: เอา nowrap/ellipsis ออก แล้วใส่ word-break แทน เพื่อให้ตัดขึ้นบรรทัดใหม่ได้ */
+          .item-code { font-size: 6.8pt; font-weight: 900; word-break: break-all; line-height: 1.1; max-height: 0.25in; overflow: hidden; }
+          
           .item-name { font-size: 6.1pt; font-weight: 800; line-height: 1.08; max-height: 0.25in; overflow: hidden; }
           .item-expire { font-size: 5.8pt; color: #0f766e; font-weight: 800; line-height: 1; }
           .warning-banner { padding: 0.025in 0.03in; border-radius: 0.05in; border: 1px solid #fb923c; background: #fff7ed; color: #9a3412; font-size: 6.8pt; line-height: 1.08; font-weight: 900; text-align: center; }
@@ -563,7 +566,7 @@ const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05
                 text: ${JSON.stringify(item.itemCode)},
                 width: 148,
                 height: 148,
-                correctLevel: QRCode.CorrectLevel.M
+                correctLevel: QRCode.CorrectLevel.L /* 💡 ปรับเป็น L เพื่อให้ QR Code สแกนง่ายขึ้นเมื่อรหัสยาว */
               });
             `).join('')}
             setTimeout(() => {
