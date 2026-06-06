@@ -2,8 +2,8 @@
   <div class="scanner-shell">
     <div class="scanner-header">
       <div>
-        <div id="scannerTitle" class="scanner-title">สแกนบาร์โค้ด</div>
-        <div class="scanner-subtitle">กล้องหลัง • โฟกัสต่อเนื่อง • รองรับมือถือและแท็บเล็ต</div>
+        <div id="scannerTitle" class="scanner-title">สแกน QR / บาร์โค้ด</div>
+        <div class="scanner-subtitle">กล้องหลัก • โฟกัสต่อเนื่อง • รองรับมือถือและแท็บเล็ต</div>
       </div>
       <button type="button" class="scanner-close" data-scanner-action="close" aria-label="ปิดสแกน">
         <span class="material-symbols-rounded">close</span>
@@ -30,18 +30,18 @@
           </div>
         </div>
         <div class="scanner-hint">
-          แตะให้บาร์โค้ดอยู่ในกรอบกลางจอ ระบบจะสแกนทุก 300ms และกันยิงซ้ำ 1.5 วินาที
+          วางรหัสให้อยู่ในกรอบกลางจอ ระบบจะสแกนทุก 300ms และกันยิงซ้ำ 1.5 วินาที
         </div>
       </div>
 
       <div id="scannerErrorPanel" class="scanner-error hidden">
         <div class="scanner-error-title">ไม่สามารถเปิดกล้องได้</div>
         <div id="scannerErrorText" class="scanner-error-text">
-          กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์ แล้วกด Retry เพื่อเริ่มสแกนใหม่
+          กรุณาอนุญาตสิทธิ์กล้องในเบราว์เซอร์ แล้วกด ลองใหม่ เพื่อเริ่มสแกน (ใช้ได้เฉพาะ https เท่านั้น)
         </div>
         <div class="mt-4 flex flex-wrap gap-2">
           <button type="button" id="scannerRetryBtn" class="scanner-action-btn scanner-action-btn--primary">
-            <span class="material-symbols-rounded text-base">refresh</span> Retry
+            <span class="material-symbols-rounded text-base">refresh</span> ลองใหม่
           </button>
           <button type="button" id="scannerPermissionHelpBtn" class="scanner-action-btn">
             <span class="material-symbols-rounded text-base">help</span> วิธีเปิดสิทธิ์
@@ -56,7 +56,7 @@
             id="scannerManualInput"
             class="scanner-manual-input"
             type="search"
-            placeholder="พิมพ์หรือยิงด้วยเครื่องสแกนแบบคีย์บอร์ด"
+            placeholder="พิมพ์ ItemCode หรือยิงด้วยเครื่องสแกนแบบคีย์บอร์ด"
             autocomplete="off"
             autocapitalize="off"
             autocorrect="off"
