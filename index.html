@@ -87,14 +87,16 @@
   <div id="dashboardMetrics" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"></div>
 
   <div class="glass-card rounded-3xl p-4 sm:p-6 space-y-4">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <h3 class="text-lg font-bold text-slate-900">รายการคงคลังทั้งหมด</h3>
         <p class="text-sm text-slate-500">ค้นหาและจัดเรียงได้จากด้านล่าง</p>
       </div>
-      <div class="grid gap-3 md:grid-cols-3">
-        <input id="stockSearchInput" class="field" type="search" placeholder="ค้นหา ItemCode / ชื่อรายการ / สถานะ">
-        <select id="stockStatusFilter" class="field">
+      
+      <div class="flex flex-wrap items-center gap-3 lg:justify-end">
+        <input id="stockSearchInput" class="field w-full sm:w-auto" type="search" placeholder="ค้นหา ItemCode / ชื่อรายการ...">
+        
+        <select id="stockStatusFilter" class="field w-full sm:w-auto">
           <option value="all">ทุกสถานะ</option>
           <option value="normal">ปกติ</option>
           <option value="expiredToday">หมดอายุวันนี้</option>
@@ -103,8 +105,15 @@
           <option value="expiring1">ใกล้หมดอายุ 1 วัน</option>
           <option value="expired">หมดอายุแล้ว</option>
         </select>
-        <button id="stockRefreshBtn" class="btn-secondary">
+        
+        <input type="date" id="filterDate" class="field w-full sm:w-auto" title="ค้นหาตามวันที่รับเข้า">
+        
+        <button id="stockRefreshBtn" class="btn-secondary w-full sm:w-auto">
           <span class="material-symbols-rounded text-base">refresh</span> รีเฟรช
+        </button>
+
+        <button id="printSelectedBtn" class="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition w-full sm:w-auto shadow-sm">
+          <span class="material-symbols-rounded text-[18px]">print</span> พิมพ์ที่เลือก
         </button>
       </div>
     </div>
@@ -114,6 +123,9 @@
         <table class="table-sticky min-w-full text-left text-sm">
           <thead class="border-b border-slate-200 text-slate-600">
             <tr>
+              <th class="px-4 py-3 w-10 text-center">
+                <input type="checkbox" id="selectAllStock" class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer w-4 h-4">
+              </th>
               <th class="px-4 py-3">ItemCode</th>
               <th class="px-4 py-3">ชื่อรายการ</th>
               <th class="px-4 py-3">รับเข้า</th>
