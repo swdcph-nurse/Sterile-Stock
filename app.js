@@ -1,4 +1,4 @@
-const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyk48i0sO05d_M-wm_k-FEbUmBNWn7sSbd6O9MfVQc-5K3k8jQAo0UQJKrb7GHTUX7C/exec';
+const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwuKqvT1aya5f2nE0TgFuEzSCVSo910bscVz5hp3Q-QyM5qicyqYgqUMEbd6gH2k6g/exec';
 const GAS_API_URL = (window.STERILE_API_URL || document.querySelector('meta[name="gas-api-url"]')?.content || DEFAULT_GAS_API_URL).replace(/\/$/, '');
 const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
