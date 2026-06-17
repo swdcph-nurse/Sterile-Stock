@@ -1,0 +1,254 @@
+/**
+ * Repository and cache helpers for Sterile STOCK.
+ */
+
+const CACHE_TTL_SECONDS = 60;
+const CACHE_SCOPES = {
+  DASHBOARD: 'dashboard',
+  STOCK: 'stock',
+  SUMMARY: 'summary',
+  MASTERS: 'masters',
+  SETTINGS: 'settings'
+};
+
+/**
+ * Builds a column index map from the first row of a sheet.
+ * @param {Array<*>} headers
+ * @param {Object<string, Array<string>>} aliasMap
+ * @returns {Object<string, number>}
+ */
+function buildColumnIndexMap_(headers, aliasMap) {
+  const normalizedHeaders = (headers || []).map((header) => normalizeText_(header));
+  const indexMap = {};
+  Object.entries(aliasMap || {}).forEach(([field, aliases]) => {
+    const candidates = Array.isArray(aliases) ? aliases : [aliases];
+    let index = -1;
+    for (let i = 0; i < candidates.length; i += 1) {
+      const normalizedAlias = normalizeText_(candidates[i]);
+      index = normalizedHeaders.indexOf(normalizedAlias);
+      if (index >= 0) {
+        break;
+      }
+    }
+    indexMap[field] = index;
+  });
+  return indexMap;
+}
+
+/**
+ * Returns a cache key that automatically includes a version stamp.
+ * @param {string} scope
+ * @param {Object} payload
+ * @returns {string}
+ */
+function buildCacheKey_(scope, payload) {
+  const version = getCacheVersion_(scope);
+  const json = JSON.stringify(payload || {});
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, json)
+    .map((byte) => (`0${(byte & 0xFF).toString(16)}`).slice(-2))
+    .join('');
+  return `sterile:${scope}:v${version}:${digest}`;
+}
+
+/**
+ * Returns the current cache version for a scope.
+ * @param {string} scope
+ * @returns {number}
+ */
+function getCacheVersion_(scope) {
+  const key = `cacheVersion:${scope}`;
+  const raw = PropertiesService.getScriptProperties().getProperty(key);
+  const version = Number(raw);
+  return Number.isFinite(version) && version > 0 ? version : 1;
+}
+
+/**
+ * Bumps cache versions so stale entries become unreachable.
+ * @param {Array<string>} scopes
+ * @returns {void}
+ */
+function bumpCacheVersions_(scopes) {
+  const uniqueScopes = Array.from(new Set((scopes || []).filter(Boolean)));
+  if (!uniqueScopes.length) {
+    return;
+  }
+  const properties = PropertiesService.getScriptProperties();
+  uniqueScopes.forEach((scope) => {
+    const key = `cacheVersion:${scope}`;
+    const current = Number(properties.getProperty(key)) || 1;
+    properties.setProperty(key, String(current + 1));
+  });
+}
+
+/**
+ * Reads a cached JSON payload or generates it.
+ * @template T
+ * @param {string} scope
+ * @param {Object} payload
+ * @param {() => T} producer
+ * @param {number=} ttlSeconds
+ * @returns {T}
+ */
+function withCachedJson_(scope, payload, producer, ttlSeconds) {
+  const cache = CacheService.getScriptCache();
+  const key = buildCacheKey_(scope, payload);
+  const cached = cache.get(key);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  const result = producer();
+  const serialized = JSON.stringify(result);
+  if (serialized.length <= 90000) {
+    cache.put(key, serialized, ttlSeconds || CACHE_TTL_SECONDS);
+  }
+  return result;
+}
+
+/**
+ * Loads master rows from the Data sheet in one bulk read.
+ * @returns {Array<Object>}
+ */
+function loadMasterRowsRaw_() {
+  const sheet = getSheet_(SHEET_NAMES.DATA);
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) {
+    return [];
+  }
+  const indexMap = buildColumnIndexMap_(values[0], {
+    itemMasterId: [SHEET_HEADERS.DATA[0], 'ItemMasterID'],
+    name: [SHEET_HEADERS.DATA[1]],
+    type: [SHEET_HEADERS.DATA[2]],
+    unit: [SHEET_HEADERS.DATA[3]],
+    note: [SHEET_HEADERS.DATA[4]]
+  });
+
+  return values.slice(1)
+    .filter((row) => safeText_(row[indexMap.name]) || safeText_(row[indexMap.itemMasterId]))
+    .map((row, index) => ({
+      rowIndex: index + 2,
+      itemMasterId: safeText_(row[indexMap.itemMasterId]),
+      name: safeText_(row[indexMap.name]),
+      type: safeText_(row[indexMap.type]),
+      unit: safeText_(row[indexMap.unit]),
+      note: safeText_(row[indexMap.note])
+    }));
+}
+
+/**
+ * Loads dispatch rows from the DispatchLogs sheet in one bulk read.
+ * @returns {Array<Object>}
+ */
+function loadDispatchRowsRaw_() {
+  const sheet = getSheet_(SHEET_NAMES.DISPATCH);
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) {
+    return [];
+  }
+  const indexMap = buildColumnIndexMap_(values[0], {
+    dispatchId: [SHEET_HEADERS.DISPATCH[0]],
+    itemCode: [SHEET_HEADERS.DISPATCH[1]],
+    name: [SHEET_HEADERS.DISPATCH[2]],
+    dispatchDate: [SHEET_HEADERS.DISPATCH[3]],
+    quantity: [SHEET_HEADERS.DISPATCH[4]],
+    dispatchType: [SHEET_HEADERS.DISPATCH[5]],
+    note: [SHEET_HEADERS.DISPATCH[6]],
+    createdBy: [SHEET_HEADERS.DISPATCH[7]],
+    timestamp: [SHEET_HEADERS.DISPATCH[8]]
+  });
+
+  return values.slice(1)
+    .filter((row) => safeText_(row[indexMap.dispatchId]))
+    .map((row, index) => ({
+      rowIndex: index + 2,
+      dispatchId: safeText_(row[indexMap.dispatchId]),
+      itemCode: safeText_(row[indexMap.itemCode]),
+      name: safeText_(row[indexMap.name]),
+      dispatchDate: toDate_(row[indexMap.dispatchDate]),
+      quantity: Number(row[indexMap.quantity]) || 0,
+      dispatchType: safeText_(row[indexMap.dispatchType]),
+      note: safeText_(row[indexMap.note]),
+      createdBy: safeText_(row[indexMap.createdBy]),
+      timestamp: toDate_(row[indexMap.timestamp]) || toDate_(row[indexMap.dispatchDate]) || new Date()
+    }));
+}
+
+/**
+ * Loads stock rows from the Stock sheet and optionally synchronizes the status cells.
+ * @param {{syncSheet?: boolean}=} options
+ * @returns {{rows: Array<Object>, changed: boolean}}
+ */
+function loadStockRowsRaw_(options) {
+  const syncSheet = !!(options && options.syncSheet);
+  const sheet = getSheet_(SHEET_NAMES.STOCK);
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) {
+    return { rows: [], changed: false };
+  }
+  const indexMap = buildColumnIndexMap_(values[0], {
+    itemCode: [SHEET_HEADERS.STOCK[0], 'ItemCode'],
+    name: [SHEET_HEADERS.STOCK[1]],
+    receiveDate: [SHEET_HEADERS.STOCK[2]],
+    sterileDate: [SHEET_HEADERS.STOCK[3]],
+    expireDate: [SHEET_HEADERS.STOCK[4]],
+    quantity: [SHEET_HEADERS.STOCK[5]],
+    status: [SHEET_HEADERS.STOCK[6]],
+    lastUpdate: [SHEET_HEADERS.STOCK[7]]
+  });
+
+  const rows = [];
+  const normalizedValues = values.slice(1).map((row) => row.slice());
+  let changed = false;
+
+  values.slice(1).forEach((row, index) => {
+    const itemCode = safeText_(row[indexMap.itemCode]);
+    if (!itemCode) {
+      return;
+    }
+    const quantity = Number(row[indexMap.quantity]) || 0;
+    const status = calculateStockStatus_(row[indexMap.expireDate], quantity);
+    const lastUpdate = toDate_(row[indexMap.lastUpdate]) || toDate_(row[indexMap.receiveDate]) || new Date();
+    const normalizedRow = [
+      itemCode,
+      safeText_(row[indexMap.name]),
+      row[indexMap.receiveDate],
+      row[indexMap.sterileDate],
+      row[indexMap.expireDate],
+      quantity,
+      status.label,
+      lastUpdate
+    ];
+    normalizedValues[index] = normalizedRow;
+    if (syncSheet) {
+      const currentStatus = safeText_(row[indexMap.status]);
+      if (currentStatus !== status.label || Number(row[indexMap.quantity]) !== quantity || !row[indexMap.lastUpdate]) {
+        changed = true;
+      }
+    }
+    rows.push({
+      rowIndex: index + 2,
+      itemCode,
+      name: safeText_(row[indexMap.name]),
+      receiveDate: toDate_(row[indexMap.receiveDate]),
+      sterileDate: toDate_(row[indexMap.sterileDate]),
+      expireDate: toDate_(row[indexMap.expireDate]),
+      quantity,
+      status: status.label,
+      statusKey: status.key,
+      daysLeft: status.daysLeft,
+      lastUpdate,
+      receiveDateText: formatThaiDate_(row[indexMap.receiveDate]),
+      sterileDateText: formatThaiDate_(row[indexMap.sterileDate]),
+      expireDateText: formatThaiDate_(row[indexMap.expireDate]),
+      lastUpdateText: formatThaiDateTime_(lastUpdate)
+    });
+  });
+
+  if (syncSheet && changed) {
+    sheet.getRange(2, 1, normalizedValues.length, normalizedValues[0].length).setValues(normalizedValues);
+    bumpCacheVersions_([CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+  }
+
+  return { rows, changed };
+}
+

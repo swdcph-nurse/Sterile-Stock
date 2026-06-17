@@ -1,0 +1,455 @@
+/**
+ * Shared configuration and utilities for the Sterile STOCK app.
+ */
+
+const APP_CONFIG = {
+  title: 'ระบบคลังเครื่องมือ และวัสดุปราศจากเชื้อ ตึกพิเศษปาริฉัตร (Sterile STOCK)',
+  shortTitle: 'Sterile STOCK',
+  hospitalName: 'ตึกพิเศษปาริฉัตร',
+  spreadsheetId: '1U10pMDTQdlJieOO_kl9PAgfOAKRnjNUiZjrhmTtPLUU',
+  timeZone: 'Asia/Bangkok'
+};
+
+const SHEET_NAMES = {
+  DATA: 'Data',
+  STOCK: 'Stock',
+  RECEIVE: 'ReceiveLogs',
+  DISPATCH: 'DispatchLogs',
+  SETTINGS: 'Settings'
+};
+
+const SHEET_HEADERS = {
+  DATA: ['ItemMasterID', 'ชื่อรายการ', 'ประเภท', 'หน่วยนับ', 'หมายเหตุ'],
+  STOCK: ['ItemCode', 'ชื่อรายการ', 'วันที่รับเข้า', 'วันที่นึ่ง', 'วันที่หมดอายุ', 'จำนวนคงเหลือ', 'สถานะ', 'LastUpdate'],
+  RECEIVE: ['ReceiveID', 'ItemCode', 'วันที่รับเข้า', 'ชื่อรายการ', 'วันที่นึ่ง', 'วันที่หมดอายุ', 'จำนวนรับ', 'Printed', 'CreatedBy', 'Timestamp'],
+  DISPATCH: ['DispatchID', 'ItemCode', 'ชื่อรายการ', 'วันที่จ่ายออก', 'จำนวนจ่ายออก', 'ประเภทการจ่าย', 'หมายเหตุ', 'CreatedBy', 'Timestamp'],
+  SETTINGS: ['Key', 'Value', 'Note']
+};
+
+const STATUS_LABELS = {
+  NORMAL: 'ปกติ',
+  EXPIRING_3: 'ใกล้หมดอายุ 3 วัน',
+  EXPIRING_2: 'ใกล้หมดอายุ 2 วัน',
+  EXPIRING_1: 'ใกล้หมดอายุ 1 วัน',
+  EXPIRED_TODAY: 'หมดอายุวันนี้',
+  EXPIRED: 'หมดอายุแล้ว',
+  EMPTY: 'หมด'
+};
+
+const APP_ICON_DATA_URL =
+  'data:image/png;base64,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...';
+
+/**
+ * Returns the app configuration enriched with URLs used by the frontend.
+ * @returns {Object}
+ */
+function getAppConfig_() {
+  const baseUrl = getWebAppUrl_();
+  return {
+    ...APP_CONFIG,
+    baseUrl,
+    manifestUrl: getAssetUrl_('manifest'),
+    serviceWorkerUrl: getAssetUrl_('sw'),
+    iconDataUrl: APP_ICON_DATA_URL
+  };
+}
+
+/**
+ * Returns the deployment URL when available.
+ * @returns {string}
+ */
+function getWebAppUrl_() {
+  try {
+    return ScriptApp.getService().getUrl() || '';
+  } catch (error) {
+    return '';
+  }
+}
+
+/**
+ * Builds the asset URL used by the shell and PWA endpoints.
+ * @param {string} asset
+ * @returns {string}
+ */
+function getAssetUrl_(asset) {
+  const baseUrl = getWebAppUrl_();
+  if (!baseUrl) {
+    return '';
+  }
+  return `${baseUrl}?asset=${encodeURIComponent(asset)}`;
+}
+
+/**
+ * Opens the configured spreadsheet and falls back safely when needed.
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
+ */
+function getSpreadsheet_() {
+  const propertyId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  const spreadsheetId = (propertyId || APP_CONFIG.spreadsheetId || '').trim();
+  if (spreadsheetId) {
+    return SpreadsheetApp.openById(spreadsheetId);
+  }
+  const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!activeSpreadsheet) {
+    throw new Error('ไม่พบ Spreadsheet ที่เชื่อมต่อกับระบบ');
+  }
+  return activeSpreadsheet;
+}
+
+/**
+ * Ensures every required sheet exists with the correct header row.
+ * @returns {void}
+ */
+function ensureSchema_() {
+  const spreadsheet = getSpreadsheet_();
+  Object.entries(SHEET_HEADERS).forEach(([key, headers]) => {
+    const sheetName = SHEET_NAMES[key];
+    let sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = spreadsheet.insertSheet(sheetName);
+    }
+    const currentHeaders = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, headers.length).getValues()[0] : [];
+    const shouldWriteHeaders = currentHeaders.length < headers.length || headers.some((header, index) => currentHeaders[index] !== header);
+    if (shouldWriteHeaders) {
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.setFrozenRows(1);
+    }
+  });
+  seedSettingsIfNeeded_();
+}
+
+/**
+ * Seeds Settings with sensible defaults.
+ * @returns {void}
+ */
+function seedSettingsIfNeeded_() {
+  const sheet = getSheet_(SHEET_NAMES.SETTINGS);
+  if (sheet.getLastRow() > 1) {
+    return;
+  }
+  const defaults = [
+    ['appTitle', APP_CONFIG.title, 'ชื่อระบบ'],
+    ['hospitalName', APP_CONFIG.hospitalName, 'ชื่อหน่วยงาน'],
+    ['timeZone', APP_CONFIG.timeZone, 'เขตเวลา'],
+    ['createdBy', '', 'ผู้ใช้งานเริ่มต้น']
+  ];
+  sheet.getRange(2, 1, defaults.length, defaults[0].length).setValues(defaults);
+}
+
+/**
+ * Returns a sheet by name and creates it if necessary.
+ * @param {string} sheetName
+ * @returns {GoogleAppsScript.Spreadsheet.Sheet}
+ */
+function getSheet_(sheetName) {
+  const spreadsheet = getSpreadsheet_();
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+    const headers = Object.values(SHEET_HEADERS).find(() => true);
+    if (headers) {
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+  }
+  return sheet;
+}
+
+/**
+ * Returns the settings sheet as a key-value map.
+ * @returns {Object<string, string>}
+ */
+function getSettingsMap_() {
+  ensureSchema_();
+  return withCachedJson_(CACHE_SCOPES.SETTINGS, { scope: 'settings' }, () => {
+    const sheet = getSheet_(SHEET_NAMES.SETTINGS);
+    const values = sheet.getDataRange().getValues();
+    const settings = {
+      appTitle: APP_CONFIG.title,
+      hospitalName: APP_CONFIG.hospitalName,
+      timeZone: APP_CONFIG.timeZone,
+      createdBy: ''
+    };
+    values.slice(1).forEach((row) => {
+      const key = safeText_(row[0]);
+      if (key) {
+        settings[key] = row[1] != null ? String(row[1]) : '';
+      }
+    });
+    return settings;
+  });
+}
+
+/**
+ * Returns a current user label suitable for logs.
+ * @returns {string}
+ */
+function getCurrentUserLabel_() {
+  try {
+    const email = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
+    return email || 'system';
+  } catch (error) {
+    return 'system';
+  }
+}
+
+/**
+ * Removes unsafe characters and trims input text.
+ * @param {*} value
+ * @returns {string}
+ */
+function safeText_(value) {
+  return String(value == null ? '' : value)
+    .replace(/[\u0000-\u001f<>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Normalizes a search query for comparisons.
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeText_(value) {
+  return safeText_(value).toLowerCase();
+}
+
+/**
+ * Converts a value to a Date when possible.
+ * @param {*} value
+ * @returns {Date|null}
+ */
+function toDate_(value) {
+  if (!value) {
+    return null;
+  }
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return new Date(value.getTime());
+  }
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Converts a date-like value into an ISO date string.
+ * @param {*} value
+ * @returns {string}
+ */
+function toIsoDate_(value) {
+  const date = toDate_(value);
+  if (!date) {
+    return '';
+  }
+  return Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyy-MM-dd');
+}
+
+/**
+ * Converts a date-like value into an ISO timestamp string.
+ * @param {*} value
+ * @returns {string}
+ */
+function toIsoDateTime_(value) {
+  const date = toDate_(value);
+  if (!date) {
+    return '';
+  }
+  return Utilities.formatDate(date, APP_CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+/**
+ * Formats a date in Thai Buddhist calendar format.
+ * @param {*} value
+ * @returns {string}
+ */
+function formatThaiDate_(value) {
+  const date = toDate_(value);
+  if (!date) {
+    return '-';
+  }
+  const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const day = Utilities.formatDate(date, APP_CONFIG.timeZone, 'd');
+  const month = thaiMonths[Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'M')) - 1];
+  const year = Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyy')) + 543;
+  return `${day} ${month} ${year}`;
+}
+
+/**
+ * Formats a timestamp for audit display.
+ * @param {*} value
+ * @returns {string}
+ */
+function formatThaiDateTime_(value) {
+  const date = toDate_(value);
+  if (!date) {
+    return '-';
+  }
+  const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const day = Utilities.formatDate(date, APP_CONFIG.timeZone, 'd');
+  const month = thaiMonths[Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'M')) - 1];
+  const year = Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyy')) + 543;
+  const time = Utilities.formatDate(date, APP_CONFIG.timeZone, 'HH:mm');
+  return `${day} ${month} ${year} ${time}`;
+}
+
+/**
+ * Returns the current date with the correct timezone.
+ * @returns {Date}
+ */
+function todayInBangkok_() {
+  const now = new Date();
+  const dateString = Utilities.formatDate(now, APP_CONFIG.timeZone, 'yyyy-MM-dd');
+  return new Date(`${dateString}T00:00:00`);
+}
+
+/**
+ * Calculates the whole-day difference between two dates.
+ * @param {Date} endDate
+ * @param {Date} startDate
+ * @returns {number}
+ */
+function daysBetween_(endDate, startDate) {
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
+
+/**
+ * Calculates a stock status based on remaining quantity and expiry.
+ * @param {*} expireDateValue
+ * @param {*} quantityValue
+ * @returns {{label: string, daysLeft: number|null, key: string}}
+ */
+function calculateStockStatus_(expireDateValue, quantityValue) {
+  const quantity = Number(quantityValue) || 0;
+  if (quantity <= 0) {
+    return { label: STATUS_LABELS.EMPTY, daysLeft: null, key: 'empty' };
+  }
+  const expireDate = toDate_(expireDateValue);
+  if (!expireDate) {
+    return { label: STATUS_LABELS.NORMAL, daysLeft: null, key: 'normal' };
+  }
+  const today = todayInBangkok_();
+  const daysLeft = daysBetween_(expireDate, today);
+  if (daysLeft < 0) {
+    return { label: STATUS_LABELS.EXPIRED, daysLeft, key: 'expired' };
+  }
+  if (daysLeft === 0) {
+    return { label: STATUS_LABELS.EXPIRED_TODAY, daysLeft, key: 'expiredToday' };
+  }
+  if (daysLeft === 1) {
+    return { label: STATUS_LABELS.EXPIRING_1, daysLeft, key: 'expiring1' };
+  }
+  if (daysLeft === 2) {
+    return { label: STATUS_LABELS.EXPIRING_2, daysLeft, key: 'expiring2' };
+  }
+  if (daysLeft === 3) {
+    return { label: STATUS_LABELS.EXPIRING_3, daysLeft, key: 'expiring3' };
+  }
+  return { label: STATUS_LABELS.NORMAL, daysLeft, key: 'normal' };
+}
+
+/**
+ * Returns the app shell assets for the frontend.
+ * @returns {Object}
+ */
+function getAppBootstrapData_() {
+  const settings = getSettingsMap_();
+  return {
+    app: getAppConfig_(),
+    settings,
+    masters: getMasterItems_(),
+    dashboard: getDashboardMetrics_(),
+    stockPage: getStockPage_({ page: 1, pageSize: 10, query: '', status: 'all', sortField: 'LastUpdate', sortDirection: 'desc' })
+  };
+}
+
+/**
+ * Serves dynamic app assets such as the manifest and service worker.
+ * @param {string} asset
+ * @returns {GoogleAppsScript.Content.TextOutput}
+ */
+function serveAsset_(asset) {
+  if (asset === 'manifest') {
+    return ContentService
+      .createTextOutput(buildManifest_())
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  if (asset === 'sw' || asset === 'service-worker') {
+    return ContentService
+      .createTextOutput(buildServiceWorker_())
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput('');
+}
+
+/**
+ * Builds the PWA manifest at runtime so it works inside GAS.
+ * @returns {string}
+ */
+function buildManifest_() {
+  const baseUrl = getWebAppUrl_() || '.';
+  const manifest = {
+    name: APP_CONFIG.title,
+    short_name: APP_CONFIG.shortTitle,
+    start_url: baseUrl,
+    scope: baseUrl,
+    display: 'standalone',
+    orientation: 'portrait-primary',
+    background_color: '#f8fafc',
+    theme_color: '#0f766e',
+    icons: [
+      { src: APP_ICON_DATA_URL, sizes: '192x192', type: 'image/png' },
+      { src: APP_ICON_DATA_URL, sizes: '512x512', type: 'image/png' }
+    ]
+  };
+  return JSON.stringify(manifest);
+}
+
+/**
+ * Builds the service worker script used for offline shell caching.
+ * @returns {string}
+ */
+function buildServiceWorker_() {
+  return `
+const CACHE_NAME = 'sterile-stock-v1';
+const APP_SHELL = self.location.origin + self.location.pathname;
+const CORE_ASSETS = [
+  APP_SHELL,
+  APP_SHELL + '?asset=manifest'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin === self.location.origin && requestUrl.pathname === self.location.pathname) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(APP_SHELL, clone));
+          return response;
+        })
+        .catch(() => caches.match(APP_SHELL).then((cached) => cached || caches.match(event.request)))
+    );
+    return;
+  }
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
+  );
+});
+  `.trim();
+}

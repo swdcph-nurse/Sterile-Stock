@@ -1,0 +1,652 @@
+/**
+ * Stock and transaction operations for Sterile STOCK.
+ */
+
+/**
+ * Returns all data needed for the first app paint.
+ * @returns {Object}
+ */
+function getBootstrapData() {
+  ensureSchema_();
+  return getDashboardData_({});
+}
+
+/**
+ * Returns a consolidated dashboard payload with one stock snapshot.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getDashboardData(params) {
+  ensureSchema_();
+  return getDashboardData_(params || {});
+}
+
+/**
+ * Returns the master data list used by the receive dropdown.
+ * @returns {Array<Object>}
+ */
+function getMasterItems() {
+  ensureSchema_();
+  return getMasterItems_();
+}
+
+/**
+ * Returns dashboard metrics and threshold counts.
+ * @returns {Object}
+ */
+function getDashboardMetrics() {
+  ensureSchema_();
+  return getDashboardMetrics_();
+}
+
+/**
+ * Returns a paginated and sorted stock page.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getStockPage(params) {
+  ensureSchema_();
+  return getStockPage_(params || {});
+}
+
+/**
+ * Searches stock items for the dispatch flow.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function searchStock(params) {
+  ensureSchema_();
+  return searchStock_(params || {});
+}
+
+/**
+ * Returns stock rows that match a dashboard status card.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function getStockByStatus(params) {
+  ensureSchema_();
+  return getStockByStatus_(params || {});
+}
+
+/**
+ * Suggests the next unique ItemCode for the selected receive date.
+ * @param {Object} params
+ * @returns {string}
+ */
+function suggestItemCode(params) {
+  ensureSchema_();
+  return generateItemCode_(params || {});
+}
+
+/**
+ * Saves a receive transaction, writes stock, and returns print data.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function receiveStock(payload) {
+  ensureSchema_();
+  return receiveStock_(payload || {});
+}
+
+/**
+ * Saves a dispatch transaction and updates the stock balance.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function dispatchStock(payload) {
+  ensureSchema_();
+  return dispatchStock_(payload || {});
+}
+
+/**
+ * Returns receive and stock metadata for reprinting labels.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function getLabelInfo(payload) {
+  ensureSchema_();
+  return getLabelInfo_(payload || {});
+}
+
+/**
+ * Marks a receive log as printed after label output.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function markReceivePrinted(payload) {
+  ensureSchema_();
+  return markReceivePrinted_(payload || {});
+}
+
+/**
+ * Builds a dashboard response from a single stock snapshot.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getDashboardData_(params) {
+  const request = params || {};
+  const pageParams = {
+    page: Number(request.page) || 1,
+    pageSize: Number(request.pageSize) || 50,
+    query: safeText_(request.query),
+    status: safeText_(request.status || 'all'),
+    sortField: safeText_(request.sortField || 'LastUpdate'),
+    sortDirection: String(request.sortDirection || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc'
+  };
+  const reportParams = {
+    fiscalYearStart: request.fiscalYearStart,
+    month: request.month == null || request.month === '' ? 'all' : request.month
+  };
+
+  return withCachedJson_(CACHE_SCOPES.DASHBOARD, { pageParams, reportParams }, () => {
+    const stockSnapshot = loadStockRowsRaw_({ syncSheet: true });
+    const stockRows = stockSnapshot.rows;
+    const dispatchRows = loadDispatchRowsRaw_();
+
+    return {
+      app: getAppConfig_(),
+      settings: getSettingsMap_(),
+      masters: getMasterItems_(),
+      dashboard: buildDashboardMetricsFromRows_(stockRows),
+      stockPage: buildStockPageFromRows_(stockRows, pageParams),
+      summary: buildSummaryData_(reportParams, stockRows, dispatchRows),
+      alerts: buildStockAlerts_(stockRows)
+    };
+  });
+}
+
+/**
+ * Builds dashboard counters from an in-memory stock snapshot.
+ * @param {Array<Object>} rows
+ * @returns {Object}
+ */
+function buildDashboardMetricsFromRows_(rows) {
+  return (rows || []).reduce((accumulator, row) => {
+    switch (row.statusKey) {
+      case 'expiredToday':
+        accumulator.expiredToday += 1;
+        break;
+      case 'expiring1':
+        accumulator.expiring1 += 1;
+        break;
+      case 'expiring2':
+        accumulator.expiring2 += 1;
+        break;
+      case 'expiring3':
+        accumulator.expiring3 += 1;
+        break;
+      case 'expired':
+        accumulator.expired += 1;
+        break;
+      case 'normal':
+        accumulator.normal += 1;
+        break;
+      default:
+        break;
+    }
+    return accumulator;
+  }, {
+    normal: 0,
+    expiredToday: 0,
+    expiring1: 0,
+    expiring2: 0,
+    expiring3: 0,
+    expired: 0
+  });
+}
+
+/**
+ * Builds a paginated page from an in-memory stock snapshot.
+ * @param {Array<Object>} rows
+ * @param {Object} params
+ * @returns {Object}
+ */
+function buildStockPageFromRows_(rows, params) {
+  const request = params || {};
+  const maxPageSize = Math.max(1, Number(request.maxPageSize) || 100);
+  const pageSize = Math.max(1, Math.min(maxPageSize, Number(request.pageSize) || 10));
+  const page = Math.max(1, Number(request.page) || 1);
+  const query = normalizeText_(request.query);
+  const status = normalizeText_(request.status || 'all');
+  const sortField = safeText_(request.sortField || 'LastUpdate');
+  const sortDirection = String(request.sortDirection || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+  let items = Array.isArray(rows) ? rows.slice() : [];
+  if (query) {
+    items = items.filter((row) => [
+      row.itemCode,
+      row.name,
+      row.status,
+      row.receiveDateText,
+      row.sterileDateText,
+      row.expireDateText
+    ].join(' ').toLowerCase().includes(query));
+  }
+  if (status !== 'all') {
+    items = items.filter((row) => row.statusKey === status);
+  }
+
+  items.sort((left, right) => {
+    const leftValue = compareValueForSort_(left, sortField);
+    const rightValue = compareValueForSort_(right, sortField);
+    if (leftValue < rightValue) return sortDirection === 'asc' ? -1 : 1;
+    if (leftValue > rightValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const boundedPage = Math.min(page, totalPages);
+  const start = (boundedPage - 1) * pageSize;
+  const pageRows = items.slice(start, start + pageSize).map((row) => mapStockRow_(row));
+  return { page: boundedPage, pageSize, total, totalPages, items: pageRows };
+}
+
+/**
+ * Builds dashboard alert rows for expiring inventory.
+ * @param {Array<Object>} rows
+ * @returns {Object}
+ */
+function buildStockAlerts_(rows) {
+  const prioritizedRows = (rows || [])
+    .filter((row) => row.statusKey && row.statusKey !== 'normal')
+    .sort((left, right) => {
+      const leftDays = left.daysLeft == null ? Number.MAX_SAFE_INTEGER : left.daysLeft;
+      const rightDays = right.daysLeft == null ? Number.MAX_SAFE_INTEGER : right.daysLeft;
+      return leftDays - rightDays;
+    });
+
+  return {
+    total: prioritizedRows.length,
+    items: prioritizedRows.slice(0, 50).map((row) => mapStockRow_(row))
+  };
+}
+
+/**
+ * Loads master rows from the Data sheet.
+ * @returns {Array<Object>}
+ */
+function getMasterItems_() {
+  return withCachedJson_(CACHE_SCOPES.MASTERS, { sheet: SHEET_NAMES.DATA }, () => loadMasterRowsRaw_());
+}
+
+/**
+ * Generates the next batch code using the receive date prefix.
+ * @param {Object} params
+ * @returns {string}
+ */
+function generateItemCode_(params) {
+  const baseDate = toDate_(params.receiveDate) || todayInBangkok_();
+  return allocateItemCode_(baseDate, false);
+}
+
+/**
+ * Returns or reserves the next ItemCode sequence for a date.
+ * @param {Date} baseDate
+ * @param {boolean} reserve
+ * @returns {string}
+ */
+function allocateItemCode_(baseDate, reserve) {
+  const date = toDate_(baseDate) || todayInBangkok_();
+  const dateKey = Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyyMMdd');
+  const prefix = `STK-${dateKey}-`;
+  const propertyKey = `itemSequence:${dateKey}`;
+  const properties = PropertiesService.getScriptProperties();
+  let nextNumber = Number(properties.getProperty(propertyKey)) || 0;
+
+  if (nextNumber <= 0) {
+    nextNumber = scanNextItemSequence_(prefix);
+    properties.setProperty(propertyKey, String(nextNumber));
+  }
+
+  if (reserve) {
+    properties.setProperty(propertyKey, String(nextNumber + 1));
+  }
+
+  return `${prefix}${String(nextNumber).padStart(4, '0')}`;
+}
+
+/**
+ * Scans the receive log once to establish the next ItemCode sequence.
+ * @param {string} prefix
+ * @returns {number}
+ */
+function scanNextItemSequence_(prefix) {
+  const sheet = getSheet_(SHEET_NAMES.RECEIVE);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return 1;
+  }
+  const codes = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+  let nextNumber = 1;
+  codes.forEach((row) => {
+    const code = safeText_(row[0]);
+    if (code.startsWith(prefix)) {
+      const number = Number(code.split('-').pop()) || 0;
+      if (number >= nextNumber) {
+        nextNumber = number + 1;
+      }
+    }
+  });
+  return nextNumber;
+}
+
+/**
+ * Returns dashboard counts from the current stock snapshot.
+ * @returns {Object}
+ */
+function getDashboardMetrics_() {
+  return withCachedJson_(CACHE_SCOPES.STOCK, { kind: 'metrics' }, () => buildDashboardMetricsFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows));
+}
+
+/**
+ * Returns a paginated stock page with server-side search and sorting.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getStockPage_(params) {
+  const cachePayload = {
+    kind: 'page',
+    page: Number(params.page) || 1,
+    pageSize: Number(params.pageSize) || 10,
+    query: normalizeText_(params.query),
+    status: normalizeText_(params.status || 'all'),
+    sortField: safeText_(params.sortField || 'LastUpdate'),
+    sortDirection: String(params.sortDirection || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc'
+  };
+  return withCachedJson_(CACHE_SCOPES.STOCK, cachePayload, () => {
+    return buildStockPageFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows, params);
+  });
+}
+
+/**
+ * Searches stock items for barcode or name lookups.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function searchStock_(params) {
+  return withCachedJson_(CACHE_SCOPES.STOCK, { kind: 'search', query: normalizeText_(params.query) }, () => {
+    const query = normalizeText_(params.query);
+    if (!query) {
+      return [];
+    }
+    return buildStockPageFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows, {
+      page: 1,
+      pageSize: 20,
+      query,
+      status: 'all',
+      sortField: 'LastUpdate',
+      sortDirection: 'desc'
+    }).items;
+  });
+}
+
+/**
+ * Returns stock rows by dashboard status key.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function getStockByStatus_(params) {
+  return withCachedJson_(CACHE_SCOPES.STOCK, { kind: 'status', statusKey: normalizeText_(params.statusKey || params.status || 'all') }, () => {
+    const statusKey = normalizeText_(params.statusKey || params.status || 'all');
+    return buildStockPageFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows, {
+      page: 1,
+      pageSize: 1000,
+      maxPageSize: 1000,
+      query: '',
+      status: statusKey,
+      sortField: 'expireDate',
+      sortDirection: 'asc'
+    }).items;
+  });
+}
+
+/**
+ * Receives stock into the current inventory and logs the transaction.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function receiveStock_(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const itemName = safeText_(payload.itemName);
+    const receiveDate = toDate_(payload.receiveDate) || todayInBangkok_();
+    const sterileDate = toDate_(payload.sterileDate);
+    const expireDate = toDate_(payload.expireDate);
+    const quantity = Number(payload.quantity) || 0;
+    const note = safeText_(payload.note);
+
+    if (!itemName) throw new Error('VALIDATION:กรุณาเลือกรายการรับเข้า');
+    if (!receiveDate) throw new Error('VALIDATION:กรุณาระบุวันที่รับเข้า');
+    if (!sterileDate) throw new Error('VALIDATION:กรุณาระบุวันที่นึ่ง');
+    if (!expireDate) throw new Error('VALIDATION:กรุณาระบุวันที่หมดอายุ');
+    if (quantity <= 0) throw new Error('VALIDATION:จำนวนรับต้องมากกว่า 0');
+    if (expireDate <= sterileDate) throw new Error('VALIDATION:วันหมดอายุต้องมากกว่าวันที่นึ่ง');
+
+    const master = getMasterItems_().find((item) => normalizeText_(item.name) === normalizeText_(itemName));
+    if (!master) {
+      throw new Error('VALIDATION:ไม่พบรายการในชีต Data กรุณาเพิ่ม master data ก่อนรับเข้า');
+    }
+
+    const itemCode = allocateItemCode_(receiveDate, true);
+    const now = new Date();
+    const status = calculateStockStatus_(expireDate, quantity);
+    const createdBy = getCurrentUserLabel_();
+
+    const stockSheet = getSheet_(SHEET_NAMES.STOCK);
+    const stockRow = [itemCode, master.name, receiveDate, sterileDate, expireDate, quantity, status.label, now];
+    stockSheet.getRange(stockSheet.getLastRow() + 1, 1, 1, stockRow.length).setValues([stockRow]);
+
+    const receiveSheet = getSheet_(SHEET_NAMES.RECEIVE);
+    const receiveRow = [`RCV-${itemCode}`, itemCode, receiveDate, master.name, sterileDate, expireDate, quantity, "No", createdBy, now];
+    receiveSheet.getRange(receiveSheet.getLastRow() + 1, 1, 1, receiveRow.length).setValues([receiveRow]);
+    bumpCacheVersions_([CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+
+    return {
+      ok: true,
+      message: 'บันทึกรับเข้าสำเร็จ',
+      item: {
+        itemCode,
+        name: master.name,
+        receiveDate: toIsoDate_(receiveDate),
+        sterileDate: toIsoDate_(sterileDate),
+        expireDate: toIsoDate_(expireDate),
+        quantity,
+        status: status.label
+      }
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Dispatches stock out of inventory and logs the operation.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function dispatchStock_(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const itemCode = safeText_(payload.itemCode);
+    const dispatchDate = toDate_(payload.dispatchDate) || todayInBangkok_();
+    const quantity = Number(payload.quantity) || 0;
+    const dispatchType = safeText_(payload.dispatchType);
+    const note = safeText_(payload.note);
+
+    if (!itemCode) throw new Error('VALIDATION:กรุณาเลือกรายการก่อนจ่ายออก');
+    if (!dispatchDate) throw new Error('VALIDATION:กรุณาระบุวันที่จ่ายออก');
+    if (!dispatchType) throw new Error('VALIDATION:กรุณาเลือกประเภทการจ่าย');
+    if (quantity <= 0) throw new Error('VALIDATION:จำนวนจ่ายออกต้องมากกว่า 0');
+
+    const stockSheet = getSheet_(SHEET_NAMES.STOCK);
+    const stockRows = loadStockRowsRaw_({ syncSheet: true }).rows;
+    const targetRow = stockRows.find((row) => row.itemCode === itemCode);
+    if (!targetRow) {
+      throw new Error('VALIDATION:ไม่พบรายการในคลังหรือรายการนี้ถูกตัดจ่ายหมดแล้ว');
+    }
+
+    const remaining = Number(targetRow.quantity) || 0;
+    if (quantity > remaining) {
+      throw new Error(`VALIDATION:จำนวนจ่ายออกเกินคงเหลือ (${remaining})`);
+    }
+
+    const itemName = safeText_(targetRow.name);
+    const newRemaining = remaining - quantity;
+    const status = calculateStockStatus_(targetRow.expireDate, newRemaining);
+    const now = new Date();
+    const createdBy = getCurrentUserLabel_();
+
+    if (newRemaining <= 0) {
+      stockSheet.deleteRow(targetRow.rowIndex);
+    } else {
+      stockSheet.getRange(targetRow.rowIndex, 6, 1, 3).setValues([[newRemaining, status.label, now]]);
+    }
+
+    const dispatchSheet = getSheet_(SHEET_NAMES.DISPATCH);
+    const dispatchRow = [`DSP-${Utilities.getUuid().slice(0, 8)}`, itemCode, itemName, dispatchDate, quantity, dispatchType, note, createdBy, now];
+    dispatchSheet.getRange(dispatchSheet.getLastRow() + 1, 1, 1, dispatchRow.length).setValues([dispatchRow]);
+    bumpCacheVersions_([CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+
+    return {
+      ok: true,
+      message: newRemaining <= 0 ? 'ตัดจ่ายและลบรายการออกจาก Stock แล้ว' : 'ตัดจ่ายสำเร็จ',
+      remaining: newRemaining,
+      deleted: newRemaining <= 0,
+      item: {
+        itemCode,
+        name: itemName,
+        remaining: newRemaining,
+        status: status.label
+      }
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+function getLabelInfo_(payload) {
+  const itemCode = safeText_(payload.itemCode);
+  if (!itemCode) {
+    throw new Error('VALIDATION:กรุณาระบุ ItemCode');
+  }
+
+  const receiveSheet = getSheet_(SHEET_NAMES.RECEIVE);
+  const stockSheet = getSheet_(SHEET_NAMES.STOCK);
+  const receiveRows = receiveSheet.getDataRange().getValues();
+  const stockRows = stockSheet.getDataRange().getValues();
+
+  const receiveRow = receiveRows.find((row, index) => index > 0 && safeText_(row[1]) === itemCode);
+  const stockRow = stockRows.find((row, index) => index > 0 && safeText_(row[0]) === itemCode);
+
+  if (!receiveRow) {
+    throw new Error('ไม่พบข้อมูลสำหรับการพิมพ์ย้อนหลัง');
+  }
+
+  return {
+    ok: true,
+    item: {
+      itemCode,
+      name: safeText_(receiveRow[3]),
+      receiveDate: toIsoDate_(receiveRow[2]),
+      sterileDate: toIsoDate_(receiveRow[4]),
+      expireDate: toIsoDate_(receiveRow[5]),
+      quantity: Number(receiveRow[6]) || 0,
+      printed: safeText_(receiveRow[7]) === 'Yes',
+      remaining: stockRow ? Number(stockRow[5]) || 0 : 0,
+      status: stockRow ? safeText_(stockRow[6]) : 'หมดจ่ายแล้ว'
+    }
+  };
+}
+
+/**
+ * Marks a receive log as printed.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function markReceivePrinted_(payload) {
+  const itemCode = safeText_(payload.itemCode);
+  if (!itemCode) {
+    throw new Error('VALIDATION:กรุณาระบุ ItemCode');
+  }
+
+  const receiveSheet = getSheet_(SHEET_NAMES.RECEIVE);
+  const values = receiveSheet.getDataRange().getValues();
+  const rowIndex = values.findIndex((row, index) => index > 0 && safeText_(row[1]) === itemCode);
+  if (rowIndex < 0) {
+    throw new Error('ไม่พบ Receive Log ที่ต้องการอัปเดตการพิมพ์');
+  }
+  receiveSheet.getRange(rowIndex + 1, 8, 1, 1).setValues([['Yes']]);
+  bumpCacheVersions_([CACHE_SCOPES.MASTERS, CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+  return { ok: true };
+}
+
+/**
+ * Reloads stock statuses in the sheet so metric cards always stay current.
+ * @returns {void}
+ */
+function refreshStockStatuses_() {
+  loadStockRowsRaw_({ syncSheet: true });
+}
+
+/**
+ * Loads stock rows from the sheet and computes derived properties.
+ * @returns {Array<Object>}
+ */
+function loadStockRows_() {
+  return loadStockRowsRaw_({ syncSheet: false }).rows;
+}
+
+/**
+ * Maps a stock row into a frontend-safe payload.
+ * @param {Object} row
+ * @returns {Object}
+ */
+function mapStockRow_(row) {
+  return {
+    itemCode: row.itemCode,
+    name: row.name,
+    receiveDate: toIsoDate_(row.receiveDate),
+    sterileDate: toIsoDate_(row.sterileDate),
+    expireDate: toIsoDate_(row.expireDate),
+    quantity: row.quantity,
+    status: row.status,
+    statusKey: row.statusKey,
+    daysLeft: row.daysLeft,
+    lastUpdate: toIsoDateTime_(row.lastUpdate)
+  };
+}
+
+/**
+ * Comparison helper for sorting stock rows.
+ * @param {Object} row
+ * @param {string} sortField
+ * @returns {*}
+ */
+function compareValueForSort_(row, sortField) {
+  switch (normalizeText_(sortField)) {
+    case 'itemcode':
+      return row.itemCode;
+    case 'ชื่อรายการ':
+    case 'name':
+      return row.name;
+    case 'วันที่รับเข้า':
+    case 'receivedate':
+      return row.receiveDate ? row.receiveDate.getTime() : 0;
+    case 'วันที่นึ่ง':
+    case 'steriledate':
+      return row.sterileDate ? row.sterileDate.getTime() : 0;
+    case 'วันที่หมดอายุ':
+    case 'expiredate':
+      return row.expireDate ? row.expireDate.getTime() : 0;
+    case 'จำนวนคงเหลือ':
+    case 'quantity':
+      return row.quantity;
+    case 'lastupdate':
+      return row.lastUpdate ? row.lastUpdate.getTime() : 0;
+    default:
+      return row.lastUpdate ? row.lastUpdate.getTime() : 0;
+  }
+}

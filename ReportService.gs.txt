@@ -1,0 +1,301 @@
+/**
+ * Analytics and export helpers for Sterile STOCK.
+ */
+
+/**
+ * Returns the summary analytics payload for the selected fiscal year.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getSummaryData(params) {
+  ensureSchema_();
+  return getSummaryData_(params || {});
+}
+
+/**
+ * Exports the summary analytics as a CSV that opens in Excel.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function exportSummaryCsv(params) {
+  ensureSchema_();
+  return exportSummaryCsv_(params || {});
+}
+
+/**
+ * Builds the fiscal-year summary analytics from cached or fresh sheet data.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getSummaryData_(params) {
+  const request = params || {};
+  const fiscalYearStart = resolveFiscalYearStart_(request.fiscalYearStart);
+  const monthFilter = request.month == null || request.month === '' || request.month === 'all' ? 'all' : Number(request.month);
+
+  return withCachedJson_(CACHE_SCOPES.SUMMARY, {
+    kind: 'summary',
+    fiscalYearStart,
+    month: monthFilter
+  }, () => buildSummaryData_(request));
+}
+
+/**
+ * Builds the summary analytics payload from preloaded or on-demand sheet data.
+ * @param {Object} params
+ * @param {Array<Object>=} stockRows
+ * @param {Array<Object>=} dispatchRows
+ * @returns {Object}
+ */
+function buildSummaryData_(params, stockRows, dispatchRows) {
+  const request = params || {};
+  const fiscalYearStart = resolveFiscalYearStart_(request.fiscalYearStart);
+  const monthFilter = request.month == null || request.month === '' || request.month === 'all' ? 'all' : Number(request.month);
+  const startDate = new Date(fiscalYearStart, 9, 1, 0, 0, 0, 0);
+  const endDate = new Date(fiscalYearStart + 1, 8, 30, 23, 59, 59, 999);
+  const months = buildFiscalMonths_(fiscalYearStart);
+  const stockSnapshot = Array.isArray(stockRows) ? stockRows : loadStockRowsRaw_({ syncSheet: true }).rows;
+  const dispatchSnapshot = Array.isArray(dispatchRows) ? dispatchRows : loadDispatchRowsRaw_();
+  const filteredDispatchRows = dispatchSnapshot.filter((row) => row.timestamp && row.timestamp >= startDate && row.timestamp <= endDate);
+
+  const monthlySeries = months.map((month) => ({
+    label: month.label,
+    monthIndex: month.monthIndex,
+    total: 0,
+    use: 0,
+    rotation: 0,
+    resterile: 0,
+    none: 0,
+    loss: 0
+  }));
+
+  let total = 0;
+  let useCount = 0;
+  let rotationCount = 0;
+  let resterileCount = 0;
+  let lossCount = 0;
+
+  filteredDispatchRows.forEach((row) => {
+    const dispatchMonth = row.timestamp.getMonth();
+    const fiscalMonthIndex = ((dispatchMonth + 12) - 9) % 12;
+    const series = monthlySeries[fiscalMonthIndex];
+    const type = safeText_(row.dispatchType);
+    total += 1;
+    series.total += 1;
+
+    if (type === 'ใช้งาน') {
+      useCount += 1;
+      series.use += 1;
+    } else if (type === 'หมุนเวียนไปใช้ตึกอื่น') {
+      rotationCount += 1;
+      series.rotation += 1;
+    } else if (type === 'ส่ง Re-Sterile') {
+      resterileCount += 1;
+      series.resterile += 1;
+    } else if (type === 'ใช้แล้วไม่ได้ตัดจ่าย') {
+      lossCount += 1;
+      series.loss += 1;
+    } else {
+      series.none += 1;
+    }
+  });
+
+  const stockStats = stockSnapshot.reduce((accumulator, row) => {
+    switch (row.statusKey) {
+      case 'expiredToday':
+        accumulator.expiredToday += 1;
+        break;
+      case 'expired':
+        accumulator.expired += 1;
+        break;
+      case 'expiring1':
+        accumulator.expiring1 += 1;
+        break;
+      case 'expiring2':
+        accumulator.expiring2 += 1;
+        break;
+      case 'expiring3':
+        accumulator.expiring3 += 1;
+        break;
+      case 'normal':
+        accumulator.normal += 1;
+        break;
+      default:
+        break;
+    }
+    return accumulator;
+  }, {
+    expiredToday: 0,
+    expired: 0,
+    expiring1: 0,
+    expiring2: 0,
+    expiring3: 0,
+    normal: 0
+  });
+  const totalStock = stockSnapshot.length || 1;
+  const monthlyView = monthFilter === 'all'
+    ? monthlySeries
+    : monthlySeries.filter((_, index) => index === Number(monthFilter) - 1);
+
+  return {
+    fiscalYearStart,
+    fiscalYearLabel: `${Number(fiscalYearStart) + 544}`,
+    startDate: toIsoDate_(startDate),
+    endDate: toIsoDate_(endDate),
+    cards: {
+      totalDispatch: total,
+      resterileCount,
+      resterileRate: total ? roundOne_(resterileCount * 100 / total) : 0,
+      rotationCount,
+      rotationRate: total ? roundOne_(rotationCount * 100 / total) : 0,
+      lossCount,
+      expiredCount: stockStats.expired + stockStats.expiredToday,
+      expiredToday: stockStats.expiredToday,
+      expiring1: stockStats.expiring1,
+      expiring2: stockStats.expiring2,
+      expiring3: stockStats.expiring3,
+      normalStock: stockStats.normal,
+      normalRate: roundOne_(stockStats.normal * 100 / totalStock)
+    },
+    months: monthlyView,
+    chart: {
+      labels: monthlyView.map((item) => item.label),
+      bar: {
+        use: monthlyView.map((item) => item.use),
+        rotation: monthlyView.map((item) => item.rotation),
+        resterile: monthlyView.map((item) => item.resterile),
+        loss: monthlyView.map((item) => item.loss)
+      },
+      line: monthlyView.map((item) => item.total),
+      pie: {
+        labels: ['ใช้งาน', 'หมุนเวียนไปใช้ตึกอื่น', 'ส่ง Re-Sterile', 'ใช้แล้วไม่ได้ตัดจ่าย'],
+        values: [useCount, rotationCount, resterileCount, lossCount]
+      }
+    },
+    detailRows: buildDispatchDetailRows_(filteredDispatchRows, monthFilter),
+    stockExpired: {
+      expired: stockStats.expired,
+      expiredToday: stockStats.expiredToday,
+      expiring1: stockStats.expiring1,
+      expiring2: stockStats.expiring2,
+      expiring3: stockStats.expiring3
+    }
+  };
+}
+
+/**
+ * Exports the summary dashboard as a CSV payload.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function exportSummaryCsv_(params) {
+  const summary = getSummaryData_(params);
+  const rows = [
+    ['เดือน', 'จ่ายใช้งาน', 'หมุนเวียน', 'Re-Sterile', 'ใช้แล้วไม่ได้ตัดจ่าย', 'รวมจ่ายออก'],
+    ...summary.months.map((month) => [
+      month.label,
+      month.use,
+      month.rotation,
+      month.resterile,
+      month.loss,
+      month.total
+    ])
+  ];
+  const csv = '\uFEFF' + rows.map((row) => row.map(csvEscape_).join(',')).join('\n');
+  const fileName = `Sterile-Stock-Summary-FY-${Number(summary.fiscalYearStart) + 544}.csv`;
+  return { ok: true, fileName, csv };
+}
+
+/**
+ * Returns dispatch rows for compatibility with older callers.
+ * @returns {Array<Object>}
+ */
+function loadDispatchRows_() {
+  return loadDispatchRowsRaw_();
+}
+
+/**
+ * Builds the monthly labels in fiscal year order.
+ * @param {number} fiscalYearStart
+ * @returns {Array<Object>}
+ */
+function buildFiscalMonths_(fiscalYearStart) {
+  const thaiMonths = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
+  const months = [];
+  for (let i = 0; i < 12; i += 1) {
+    const monthIndex = (9 + i) % 12;
+    const year = monthIndex >= 9 ? fiscalYearStart : fiscalYearStart + 1;
+    const date = new Date(year, monthIndex, 1);
+    months.push({
+      monthIndex: i + 1,
+      label: `${thaiMonths[i]} ${Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyy')) + 543}`
+    });
+  }
+  return months;
+}
+
+/**
+ * Filters or returns dispatch rows for reporting detail tables.
+ * @param {Array<Object>} rows
+ * @param {string|number} monthFilter
+ * @returns {Array<Object>}
+ */
+function buildDispatchDetailRows_(rows, monthFilter) {
+  if (monthFilter === 'all') {
+    return rows.map((row) => ({
+      itemCode: row.itemCode,
+      name: row.name,
+      date: toIsoDate_(row.dispatchDate),
+      quantity: row.quantity,
+      type: row.dispatchType,
+      note: row.note
+    }));
+  }
+  const monthIndex = Number(monthFilter) - 1;
+  return rows
+    .filter((row) => {
+      const fiscalIndex = ((row.timestamp.getMonth() + 12) - 9) % 12;
+      return fiscalIndex === monthIndex;
+    })
+    .map((row) => ({
+      itemCode: row.itemCode,
+      name: row.name,
+      date: toIsoDate_(row.dispatchDate),
+      quantity: row.quantity,
+      type: row.dispatchType,
+      note: row.note
+    }));
+}
+
+/**
+ * Resolves the selected fiscal year start with sane defaults.
+ * @param {*} value
+ * @returns {number}
+ */
+function resolveFiscalYearStart_(value) {
+  const today = new Date();
+  const defaultStart = today.getMonth() >= 9 ? today.getFullYear() : today.getFullYear() - 1;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 2000 ? parsed : defaultStart;
+}
+
+/**
+ * Escapes a CSV cell value.
+ * @param {*} value
+ * @returns {string}
+ */
+function csvEscape_(value) {
+  const text = String(value == null ? '' : value);
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+/**
+ * Rounds a percentage to one decimal place.
+ * @param {number} value
+ * @returns {number}
+ */
+function roundOne_(value) {
+  return Math.round((Number(value) || 0) * 10) / 10;
+}
