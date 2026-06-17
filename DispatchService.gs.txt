@@ -1,0 +1,347 @@
+/**
+ * DispatchService.gs - ระบบจ่ายออกแบบสมบูรณ์
+ * 
+ * IMPLEMENTATION PLAN:
+ * Step 1: ตรวจสอบการรับข้อมูลจากการจ่ายออก (Data Ingestion)
+ * Step 2: เปิดใช้งาน Concurrency Control ด้วย LockService
+ * Step 3: ค้นหาและอัปเดตชีต Stock พร้อมตัดเด ยอด
+ * Step 4: บันทึกประวัติลงชีต DispatchLogs
+ * Step 5: คืนค่าและปลดล็อก
+ */
+
+/**
+ * STEP 1: ตรวจสอบการรับข้อมูลจากการจ่ายออก
+ * 
+ * Frontend ต้องส่ง JSON Object ในรูปแบบนี้:
+ * {
+ *   "itemCode": "STK-20260617-0001",      // รหัสรายการ (Required)
+ *   "quantity": 5,                       // จำนวนที่จ่ายออก (Required, > 0)
+ *   "dispatchDate": "2026-06-17",       // วันที่จ่าย (Required, yyyy-MM-dd)
+ *   "dispatchType": "use",              // ประเภทการจ่าย: use|resterile|rotation|loss (Required)
+ *   "note": "หมายเหตุการจ่าย"             // หมายเหตุ (Optional)
+ * }
+ */
+
+/**
+ * ฟังก์ชันหลักสำหรับจ่ายออกวัสดุ (เรียกจาก Frontend)
+ * 
+ * @param {Object} payload - Object ข้อมูลการจ่ายออก
+ * @returns {Object} - ผลลัพธ์: {ok: true/false, message: string, ...}
+ */
+function dispatchStockWithValidation_(payload) {
+  // STEP 2: ป้องกันการเขียนข้อมูลพร้อมกันด้วย LockService
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000); // รอ lock ได้สูงสุด 30 วินาที
+  
+  try {
+    // ===== DATA INGESTION & VALIDATION =====
+    const itemCode = safeText_(payload.itemCode);
+    const quantity = Number(payload.quantity) || 0;
+    const dispatchDate = toDate_(payload.dispatchDate) || todayInBangkok_();
+    const dispatchType = safeText_(payload.dispatchType);
+    const note = safeText_(payload.note);
+
+    // ตรวจสอบความถูกต้องของข้อมูล
+    if (!itemCode) {
+      throw new Error('VALIDATION:กรุณาระบุ ItemCode ที่ต้องจ่ายออก');
+    }
+    if (quantity <= 0) {
+      throw new Error('VALIDATION:จำนวนจ่ายออกต้องมากกว่า 0');
+    }
+    if (!dispatchDate) {
+      throw new Error('VALIDATION:กรุณาระบุวันที่จ่ายออก');
+    }
+    if (!dispatchType) {
+      throw new Error('VALIDATION:กรุณาเลือกประเภทการจ่าย (use/resterile/rotation/loss)');
+    }
+
+    // ตรวจสอบประเภทการจ่ายที่อนุญาต
+    const validDispatchTypes = ['use', 'resterile', 'rotation', 'loss'];
+    if (!validDispatchTypes.includes(dispatchType)) {
+      throw new Error(`VALIDATION:ประเภทการจ่ายไม่ถูกต้อง (อนุญาต: ${validDispatchTypes.join(', ')})`);
+    }
+
+    // ===== STEP 3: ค้นหาและอัปเดตชีต Stock =====
+    const result = performStockDeduction_(itemCode, quantity, dispatchDate, dispatchType, note);
+
+    // ถ้าการตัดลดสำเร็จ จึงบันทึกประวัติ
+    if (result.ok) {
+      // ===== STEP 4: บันทึกประวัติลงชีต DispatchLogs =====
+      recordDispatchLog_(itemCode, result.itemName, quantity, dispatchDate, dispatchType, note);
+
+      // ล้างแคช
+      bumpCacheVersions_([CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+    }
+
+    return result;
+
+  } finally {
+    // ===== STEP 5: ปลดล็อก =====
+    lock.releaseLock();
+  }
+}
+
+/**
+ * STEP 3: ค้นหาและลดยอดชีต Stock
+ * 
+ * @param {string} itemCode - รหัสรายการที่ต้องหาและตัดลด
+ * @param {number} quantityToDeduct - จำนวนที่ต้องตัดลด
+ * @param {Date} dispatchDate - วันที่จ่าย
+ * @param {string} dispatchType - ประเภทการจ่าย
+ * @param {string} note - หมายเหตุ
+ * @returns {Object} - ผลลัพธ์พร้อมสถานะและข้อมูลรายการ
+ */
+function performStockDeduction_(itemCode, quantityToDeduct, dispatchDate, dispatchType, note) {
+  const stockSheet = getSheet_(SHEET_NAMES.STOCK);
+  const allRows = stockSheet.getDataRange().getValues();
+
+  // ค้นหาแถวที่มี ItemCode ตรงกัน (เริ่มจากแถวที่ 2 เพราะแถว 1 คือ Header)
+  let targetRowIndex = -1;
+  let targetRowData = null;
+
+  for (let i = 1; i < allRows.length; i++) {
+    if (safeText_(allRows[i][0]) === itemCode) { // Column A = ItemCode
+      targetRowIndex = i + 1; // +1 เพราะ Sheets API count from 1
+      targetRowData = allRows[i];
+      break;
+    }
+  }
+
+  // ตรวจสอบว่าพบรายการหรือไม่
+  if (targetRowIndex === -1) {
+    return {
+      ok: false,
+      message: `ไม่พบ ItemCode "${itemCode}" ในสต็อก หรือรายการนี้ถูกตัดจ่ายหมดแล้ว`,
+      itemCode,
+      error: 'ITEM_NOT_FOUND'
+    };
+  }
+
+  const itemName = safeText_(targetRowData[1]); // Column B = Name
+  const currentQuantity = Number(targetRowData[5]) || 0; // Column F = Quantity
+
+  // ตรวจสอบจำนวนคงเหลือเพียงพอ
+  if (quantityToDeduct > currentQuantity) {
+    return {
+      ok: false,
+      message: `จำนวนจ่ายออกเกินคงเหลือ (คงเหลือ: ${currentQuantity})`,
+      itemCode,
+      itemName,
+      available: currentQuantity,
+      requested: quantityToDeduct,
+      error: 'INSUFFICIENT_STOCK'
+    };
+  }
+
+  // คำนวณยอดใหม่ = ยอดเดิม - จำนวนที่จ่ายออก
+  const newQuantity = currentQuantity - quantityToDeduct;
+  const expireDate = new Date(targetRowData[4]); // Column E = ExpireDate
+  const status = calculateStockStatus_(expireDate, newQuantity);
+  const now = new Date();
+
+  // CONDITION: ตรวจสอบยอดใหม่ว่าต้องลบแถวหรือไม่
+  if (newQuantity <= 0) {
+    // ยอดหมด: ลบแถวออก
+    stockSheet.deleteRow(targetRowIndex);
+    
+    return {
+      ok: true,
+      message: `ตัดจ่าย "${itemName}" สำเร็จ (ลบออกจากสต็อก)`,
+      itemCode,
+      itemName,
+      quantityDeducted: quantityToDeduct,
+      remaining: 0,
+      deleted: true,
+      deletedReason: 'Stock quantity reached zero'
+    };
+  } else {
+    // ยอดยังเหลือ: อัปเดตแถวเดิม
+    // Column F = Quantity, Column G = Status, Column H = LastUpdate
+    stockSheet.getRange(targetRowIndex, 6, 1, 3).setValues([[newQuantity, status.label, now]]);
+    
+    return {
+      ok: true,
+      message: `ตัดจ่าย "${itemName}" สำเร็จ`,
+      itemCode,
+      itemName,
+      quantityDeducted: quantityToDeduct,
+      remaining: newQuantity,
+      status: status.label,
+      deleted: false
+    };
+  }
+}
+
+/**
+ * STEP 4: บันทึกประวัติการจ่ายลงชีต DispatchLogs
+ * 
+ * @param {string} itemCode - รหัสรายการ
+ * @param {string} itemName - ชื่อรายการ
+ * @param {number} quantity - จำนวนที่จ่ายออก
+ * @param {Date} dispatchDate - วันที่จ่าย
+ * @param {string} dispatchType - ประเภทการจ่าย
+ * @param {string} note - หมายเหตุ
+ */
+function recordDispatchLog_(itemCode, itemName, quantity, dispatchDate, dispatchType, note) {
+  const dispatchSheet = getSheet_(SHEET_NAMES.DISPATCH);
+  const now = new Date();
+  const createdBy = getCurrentUserLabel_();
+
+  // สร้างรหัส DSP (Dispatch) ด้วย UUID สั้น ๆ
+  const dispatchId = `DSP-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
+
+  // ข้อมูลแถวใหม่: [ID, ItemCode, Name, DispatchDate, Quantity, Type, Note, CreatedBy, Timestamp]
+  const dispatchRow = [
+    dispatchId,
+    itemCode,
+    itemName,
+    dispatchDate,
+    quantity,
+    dispatchType,
+    note,
+    createdBy,
+    now
+  ];
+
+  // เพิ่มแถวใหม่ลงท้ายชีต
+  const newRowIndex = dispatchSheet.getLastRow() + 1;
+  dispatchSheet.getRange(newRowIndex, 1, 1, dispatchRow.length).setValues([dispatchRow]);
+
+  console.log(`✅ บันทึก Dispatch: ${dispatchId} - ${itemCode} - จำนวน ${quantity}`);
+}
+
+/**
+ * ฟังก์ชันค่านิยม: คำนวณสถานะสต็อกจากวันหมดอายุและจำนวน
+ * 
+ * @param {Date} expireDate - วันที่หมดอายุ
+ * @param {number} quantity - จำนวนคงเหลือ
+ * @returns {Object} - {label, key, daysLeft}
+ */
+function calculateStockStatus_(expireDate, quantity) {
+  if (!expireDate || quantity <= 0) {
+    return { label: 'หมด', key: 'empty', daysLeft: null };
+  }
+
+  const today = todayInBangkok_();
+  today.setHours(0, 0, 0, 0);
+  const expire = new Date(expireDate);
+  expire.setHours(0, 0, 0, 0);
+
+  const diffTime = expire.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return { label: 'หมดอายุแล้ว', key: 'expired', daysLeft: diffDays };
+  } else if (diffDays === 0) {
+    return { label: 'หมดอายุวันนี้', key: 'expiredToday', daysLeft: 0 };
+  } else if (diffDays === 1) {
+    return { label: 'ใกล้หมดอายุ 1 วัน', key: 'expiring1', daysLeft: 1 };
+  } else if (diffDays === 2) {
+    return { label: 'ใกล้หมดอายุ 2 วัน', key: 'expiring2', daysLeft: 2 };
+  } else if (diffDays === 3) {
+    return { label: 'ใกล้หมดอายุ 3 วัน', key: 'expiring3', daysLeft: 3 };
+  } else {
+    return { label: 'ปกติ', key: 'normal', daysLeft: diffDays };
+  }
+}
+
+/**
+ * ฟังก์ชันค่านิยม: อ่านชื่อผู้ใช้ปัจจุบัน
+ * 
+ * @returns {string}
+ */
+function getCurrentUserLabel_() {
+  try {
+    const email = Session.getEffectiveUser().getEmail();
+    return email || 'System User';
+  } catch (error) {
+    return 'Unknown User';
+  }
+}
+
+/**
+ * ฟังก์ชันค่านิยม: แปลง Date เป็น ISO string (yyyy-MM-dd)
+ * 
+ * @param {Date} date
+ * @returns {string}
+ */
+function toIsoDate_(date) {
+  if (!date || !(date instanceof Date)) {
+    return '';
+  }
+  return Utilities.formatDate(date, 'GMT', 'yyyy-MM-dd');
+}
+
+/**
+ * ฟังก์ชันค่านิยม: แปลง Date เป็น ISO DateTime string
+ * 
+ * @param {Date} date
+ * @returns {string}
+ */
+function toIsoDateTime_(date) {
+  if (!date || !(date instanceof Date)) {
+    return '';
+  }
+  return Utilities.formatDate(date, 'GMT', 'yyyy-MM-dd\'T\'HH:mm:ss\'Z\'');
+}
+
+/**
+ * ฟังก์ชันค่านิยม: ตัดช่องว่างและปลอดภัยสำหรับข้อความ
+ * 
+ * @param {*} text
+ * @returns {string}
+ */
+function safeText_(text) {
+  return String(text || '').trim();
+}
+
+/**
+ * ฟังก์ชันค่านิยม: แปลงข้อความเป็น Date
+ * 
+ * @param {*} dateValue
+ * @returns {Date|null}
+ */
+function toDate_(dateValue) {
+  if (!dateValue) {
+    return null;
+  }
+  if (dateValue instanceof Date) {
+    return dateValue;
+  }
+  const parsed = new Date(dateValue);
+  return !isNaN(parsed.getTime()) ? parsed : null;
+}
+
+/**
+ * ฟังก์ชันค่านิยม: วันนี้เขตเวลากรุงเทพ
+ * 
+ * @returns {Date}
+ */
+function todayInBangkok_() {
+  const now = new Date();
+  return new Date(Utilities.formatDate(now, 'Asia/Bangkok', 'yyyy-MM-dd'));
+}
+
+/**
+ * ฟังก์ชันค่านิยม: ปลอดภัยสำหรับข้อความพิเศษ
+ * 
+ * @param {*} text
+ * @returns {string}
+ */
+function normalizeText_(text) {
+  return String(text || '').trim().toLowerCase();
+}
+
+/**
+ * ฟังก์ชันค่านิยม: อ่านชีตจากชื่อ
+ * 
+ * @param {string} sheetName
+ * @returns {GoogleAppsScript.Spreadsheet.Sheet}
+ */
+function getSheet_(sheetName) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) {
+    throw new Error(`ไม่พบชีต: ${sheetName}`);
+  }
+  return sheet;
+}
