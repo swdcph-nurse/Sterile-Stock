@@ -1,476 +1,660 @@
 /**
- * Shared configuration and utilities for the Sterile STOCK app.
+ * Stock and transaction operations for Sterile STOCK.
  */
-
-const APP_CONFIG = {
-  title: 'ระบบคลังเครื่องมือ และวัสดุปราศจากเชื้อ ตึกพิเศษปาริฉัตร (Sterile STOCK)',
-  shortTitle: 'Sterile STOCK',
-  hospitalName: 'ตึกพิเศษปาริฉัตร',
-  spreadsheetId: '1U10pMDTQdlJieOO_kl9PAgfOAKRnjNUiZjrhmTtPLUU',
-  timeZone: 'Asia/Bangkok'
-};
-
-const SHEET_NAMES = {
-  DATA: 'Data',
-  STOCK: 'Stock',
-  RECEIVE: 'ReceiveLogs',
-  DISPATCH: 'DispatchLogs',
-  SETTINGS: 'Settings'
-};
-
-const SHEET_HEADERS = {
-  DATA: ['ItemMasterID', 'ชื่อรายการ', 'ประเภท', 'หน่วยนับ', 'หมายเหตุ'],
-  STOCK: ['ItemCode', 'ชื่อรายการ', 'วันที่รับเข้า', 'วันที่นึ่ง', 'วันที่หมดอายุ', 'จำนวนคงเหลือ', 'สถานะ', 'LastUpdate'],
-  RECEIVE: ['ReceiveID', 'ItemCode', 'วันที่รับเข้า', 'ชื่อรายการ', 'วันที่นึ่ง', 'วันที่หมดอายุ', 'จำนวนรับ', 'Printed', 'CreatedBy', 'Timestamp'],
-  DISPATCH: ['DispatchID', 'ItemCode', 'ชื่อรายการ', 'วันที่จ่ายออก', 'จำนวนจ่ายออก', 'ประเภทการจ่าย', 'หมายเหตุ', 'CreatedBy', 'Timestamp'],
-  SETTINGS: ['Key', 'Value', 'Note']
-};
-
-const STATUS_LABELS = {
-  NORMAL: 'ปกติ',
-  EXPIRING_3: 'ใกล้หมดอายุ 3 วัน',
-  EXPIRING_2: 'ใกล้หมดอายุ 2 วัน',
-  EXPIRING_1: 'ใกล้หมดอายุ 1 วัน',
-  EXPIRED_TODAY: 'หมดอายุวันนี้',
-  EXPIRED: 'หมดอายุแล้ว',
-  EMPTY: 'หมด'
-};
-
-const APP_ICON_DATA_URL =
-  'data:image/png;base64,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...';
 
 /**
- * Returns the app configuration enriched with URLs used by the frontend.
+ * Returns all data needed for the first app paint.
  * @returns {Object}
  */
-function getAppConfig_() {
-  const baseUrl = getWebAppUrl_();
+function getBootstrapData() {
+  ensureSchema_();
+  return getDashboardData_({});
+}
+
+/**
+ * Returns a consolidated dashboard payload with one stock snapshot.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getDashboardData(params) {
+  ensureSchema_();
+  return getDashboardData_(params || {});
+}
+
+/**
+ * Returns the master data list used by the receive dropdown.
+ * @returns {Array<Object>}
+ */
+function getMasterItems() {
+  ensureSchema_();
+  return getMasterItems_();
+}
+
+/**
+ * Returns dashboard metrics and threshold counts.
+ * @returns {Object}
+ */
+function getDashboardMetrics() {
+  ensureSchema_();
+  return getDashboardMetrics_();
+}
+
+/**
+ * Returns a paginated and sorted stock page.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getStockPage(params) {
+  ensureSchema_();
+  return getStockPage_(params || {});
+}
+
+/**
+ * Searches stock items for the dispatch flow.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function searchStock(params) {
+  ensureSchema_();
+  return searchStock_(params || {});
+}
+
+/**
+ * Returns stock rows that match a dashboard status card.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function getStockByStatus(params) {
+  ensureSchema_();
+  return getStockByStatus_(params || {});
+}
+
+/**
+ * Suggests the next unique ItemCode for the selected receive date.
+ * @param {Object} params
+ * @returns {string}
+ */
+function suggestItemCode(params) {
+  ensureSchema_();
+  return generateItemCode_(params || {});
+}
+
+/**
+ * Saves a receive transaction, writes stock, and returns print data.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function receiveStock(payload) {
+  ensureSchema_();
+  return receiveStock_(payload || {});
+}
+
+/**
+ * Saves a dispatch transaction and updates the stock balance.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function dispatchStock(payload) {
+  ensureSchema_();
+  return dispatchStock_(payload || {});
+}
+
+/**
+ * Returns receive and stock metadata for reprinting labels.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function getLabelInfo(payload) {
+  ensureSchema_();
+  return getLabelInfo_(payload || {});
+}
+
+/**
+ * Marks a receive log as printed after label output.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function markReceivePrinted(payload) {
+  ensureSchema_();
+  return markReceivePrinted_(payload || {});
+}
+
+/**
+ * Builds a dashboard response from a single stock snapshot.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getDashboardData_(params) {
+  const request = params || {};
+  const pageParams = {
+    page: Number(request.page) || 1,
+    pageSize: Number(request.pageSize) || 50,
+    query: safeText_(request.query),
+    status: safeText_(request.status || 'all'),
+    sortField: safeText_(request.sortField || 'LastUpdate'),
+    sortDirection: String(request.sortDirection || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc'
+  };
+  const reportParams = {
+    fiscalYearStart: request.fiscalYearStart,
+    month: request.month == null || request.month === '' ? 'all' : request.month
+  };
+
+  return withCachedJson_(CACHE_SCOPES.DASHBOARD, { pageParams, reportParams }, () => {
+    const stockSnapshot = loadStockRowsRaw_({ syncSheet: true });
+    const stockRows = stockSnapshot.rows;
+    const dispatchRows = loadDispatchRowsRaw_();
+
+    return {
+      app: getAppConfig_(),
+      settings: getSettingsMap_(),
+      masters: getMasterItems_(),
+      dashboard: buildDashboardMetricsFromRows_(stockRows),
+      stockPage: buildStockPageFromRows_(stockRows, pageParams),
+      summary: buildSummaryData_(reportParams, stockRows, dispatchRows),
+      alerts: buildStockAlerts_(stockRows)
+    };
+  });
+}
+
+/**
+ * Builds dashboard counters from an in-memory stock snapshot.
+ * @param {Array<Object>} rows
+ * @returns {Object}
+ */
+function buildDashboardMetricsFromRows_(rows) {
+  return (rows || []).reduce((accumulator, row) => {
+    switch (row.statusKey) {
+      case 'expiredToday':
+        accumulator.expiredToday += 1;
+        break;
+      case 'expiring1':
+        accumulator.expiring1 += 1;
+        break;
+      case 'expiring2':
+        accumulator.expiring2 += 1;
+        break;
+      case 'expiring3':
+        accumulator.expiring3 += 1;
+        break;
+      case 'expired':
+        accumulator.expired += 1;
+        break;
+      case 'normal':
+        accumulator.normal += 1;
+        break;
+      default:
+        break;
+    }
+    return accumulator;
+  }, {
+    normal: 0,
+    expiredToday: 0,
+    expiring1: 0,
+    expiring2: 0,
+    expiring3: 0,
+    expired: 0
+  });
+}
+
+/**
+ * Builds a paginated page from an in-memory stock snapshot.
+ * @param {Array<Object>} rows
+ * @param {Object} params
+ * @returns {Object}
+ */
+function buildStockPageFromRows_(rows, params) {
+  const request = params || {};
+  const maxPageSize = Math.max(1, Number(request.maxPageSize) || 100);
+  const pageSize = Math.max(1, Math.min(maxPageSize, Number(request.pageSize) || 10));
+  const page = Math.max(1, Number(request.page) || 1);
+  const query = normalizeText_(request.query);
+  const status = normalizeText_(request.status || 'all');
+  const sortField = safeText_(request.sortField || 'LastUpdate');
+  const sortDirection = String(request.sortDirection || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+  let items = Array.isArray(rows) ? rows.slice() : [];
+  if (query) {
+    items = items.filter((row) => [
+      row.itemCode,
+      row.name,
+      row.status,
+      row.receiveDateText,
+      row.sterileDateText,
+      row.expireDateText
+    ].join(' ').toLowerCase().includes(query));
+  }
+  if (status !== 'all') {
+    items = items.filter((row) => row.statusKey === status);
+  }
+
+  items.sort((left, right) => {
+    const leftValue = compareValueForSort_(left, sortField);
+    const rightValue = compareValueForSort_(right, sortField);
+    if (leftValue < rightValue) return sortDirection === 'asc' ? -1 : 1;
+    if (leftValue > rightValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const boundedPage = Math.min(page, totalPages);
+  const start = (boundedPage - 1) * pageSize;
+  const pageRows = items.slice(start, start + pageSize).map((row) => mapStockRow_(row));
+  return { page: boundedPage, pageSize, total, totalPages, items: pageRows };
+}
+
+/**
+ * Builds dashboard alert rows for expiring inventory.
+ * @param {Array<Object>} rows
+ * @returns {Object}
+ */
+function buildStockAlerts_(rows) {
+  const prioritizedRows = (rows || [])
+    .filter((row) => row.statusKey && row.statusKey !== 'normal')
+    .sort((left, right) => {
+      const leftDays = left.daysLeft == null ? Number.MAX_SAFE_INTEGER : left.daysLeft;
+      const rightDays = right.daysLeft == null ? Number.MAX_SAFE_INTEGER : right.daysLeft;
+      return leftDays - rightDays;
+    });
+
   return {
-    ...APP_CONFIG,
-    baseUrl,
-    manifestUrl: getAssetUrl_('manifest'),
-    serviceWorkerUrl: getAssetUrl_('sw'),
-    iconDataUrl: APP_ICON_DATA_URL
+    total: prioritizedRows.length,
+    items: prioritizedRows.slice(0, 50).map((row) => mapStockRow_(row))
   };
 }
 
 /**
- * Returns the deployment URL when available.
+ * Loads master rows from the Data sheet.
+ * @returns {Array<Object>}
+ */
+function getMasterItems_() {
+  return withCachedJson_(CACHE_SCOPES.MASTERS, { sheet: SHEET_NAMES.DATA }, () => loadMasterRowsRaw_());
+}
+
+/**
+ * Generates the next batch code using the receive date prefix.
+ * @param {Object} params
  * @returns {string}
  */
-function getWebAppUrl_() {
-  try {
-    return ScriptApp.getService().getUrl() || '';
-  } catch (error) {
-    return '';
-  }
+function generateItemCode_(params) {
+  const baseDate = toDate_(params.receiveDate) || todayInBangkok_();
+  return allocateItemCode_(baseDate, false);
 }
 
 /**
- * Builds the asset URL used by the shell and PWA endpoints.
- * @param {string} asset
+ * Returns or reserves the next ItemCode sequence for a date.
+ * @param {Date} baseDate
+ * @param {boolean} reserve
  * @returns {string}
  */
-function getAssetUrl_(asset) {
-  const baseUrl = getWebAppUrl_();
-  if (!baseUrl) {
-    return '';
+function allocateItemCode_(baseDate, reserve) {
+  const date = toDate_(baseDate) || todayInBangkok_();
+  const dateKey = Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyyMMdd');
+  const prefix = `STK-${dateKey}-`;
+  const propertyKey = `itemSequence:${dateKey}`;
+  const properties = PropertiesService.getScriptProperties();
+  let nextNumber = Number(properties.getProperty(propertyKey)) || 0;
+
+  if (nextNumber <= 0) {
+    nextNumber = scanNextItemSequence_(prefix);
+    properties.setProperty(propertyKey, String(nextNumber));
   }
-  return `${baseUrl}?asset=${encodeURIComponent(asset)}`;
-}
 
-/**
- * Opens the configured spreadsheet and falls back safely when needed.
- * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
- */
-function getSpreadsheet_() {
-  const propertyId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-  const spreadsheetId = (propertyId || APP_CONFIG.spreadsheetId || '').trim();
-  if (spreadsheetId) {
-    return SpreadsheetApp.openById(spreadsheetId);
+  if (reserve) {
+    properties.setProperty(propertyKey, String(nextNumber + 1));
   }
-  const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  if (!activeSpreadsheet) {
-    throw new Error('ไม่พบ Spreadsheet ที่เชื่อมต่อกับระบบ');
-  }
-  return activeSpreadsheet;
+
+  return `${prefix}${String(nextNumber).padStart(4, '0')}`;
 }
 
 /**
- * Ensures every required sheet exists with the correct header row.
- * @returns {void}
- */
-function ensureSchema_() {
-  const spreadsheet = getSpreadsheet_();
-  Object.entries(SHEET_HEADERS).forEach(([key, headers]) => {
-    const sheetName = SHEET_NAMES[key];
-    let sheet = spreadsheet.getSheetByName(sheetName);
-    if (!sheet) {
-      sheet = spreadsheet.insertSheet(sheetName);
-    }
-    const currentHeaders = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, headers.length).getValues()[0] : [];
-    const shouldWriteHeaders = currentHeaders.length < headers.length || headers.some((header, index) => currentHeaders[index] !== header);
-    if (shouldWriteHeaders) {
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.setFrozenRows(1);
-    }
-  });
-  seedSettingsIfNeeded_();
-}
-
-/**
- * Seeds Settings with sensible defaults.
- * @returns {void}
- */
-function seedSettingsIfNeeded_() {
-  const sheet = getSheet_(SHEET_NAMES.SETTINGS);
-  if (sheet.getLastRow() > 1) {
-    return;
-  }
-  const defaults = [
-    ['appTitle', APP_CONFIG.title, 'ชื่อระบบ'],
-    ['hospitalName', APP_CONFIG.hospitalName, 'ชื่อหน่วยงาน'],
-    ['timeZone', APP_CONFIG.timeZone, 'เขตเวลา'],
-    ['createdBy', '', 'ผู้ใช้งานเริ่มต้น']
-  ];
-  sheet.getRange(2, 1, defaults.length, defaults[0].length).setValues(defaults);
-}
-
-/**
- * Returns a sheet by name and creates it if necessary.
- * BUGFIX: the previous implementation used
- * `Object.values(SHEET_HEADERS).find(() => true)`, which always resolves to
- * the FIRST entry in SHEET_HEADERS (the "Data" headers) regardless of which
- * sheet was actually requested. If this path ever ran for "Stock" (e.g. the
- * tab was renamed/deleted by hand), it silently created a "Stock" sheet with
- * the wrong 5-column header row instead of the correct 8-column Stock
- * header, which breaks every column index lookup downstream
- * (loadStockRowsRaw_, dispatchStock_, receiveStock_, etc.) and can look like
- * "dispatch saves the log but never updates Stock".
- * @param {string} sheetName
- * @returns {GoogleAppsScript.Spreadsheet.Sheet}
- */
-function getSheet_(sheetName) {
-  const spreadsheet = getSpreadsheet_();
-  let sheet = spreadsheet.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(sheetName);
-    const headers = getHeadersForSheetName_(sheetName);
-    if (headers) {
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.setFrozenRows(1);
-    }
-  }
-  return sheet;
-}
-
-/**
- * Resolves the correct header row for a given sheet name by reversing the
- * SHEET_NAMES map, instead of blindly returning the first header set.
- * @param {string} sheetName
- * @returns {Array<string>|null}
- */
-function getHeadersForSheetName_(sheetName) {
-  const key = Object.keys(SHEET_NAMES).find((k) => SHEET_NAMES[k] === sheetName);
-  return key ? SHEET_HEADERS[key] : null;
-}
-
-/**
- * Returns the settings sheet as a key-value map.
- * @returns {Object<string, string>}
- */
-function getSettingsMap_() {
-  ensureSchema_();
-  return withCachedJson_(CACHE_SCOPES.SETTINGS, { scope: 'settings' }, () => {
-    const sheet = getSheet_(SHEET_NAMES.SETTINGS);
-    const values = sheet.getDataRange().getValues();
-    const settings = {
-      appTitle: APP_CONFIG.title,
-      hospitalName: APP_CONFIG.hospitalName,
-      timeZone: APP_CONFIG.timeZone,
-      createdBy: ''
-    };
-    values.slice(1).forEach((row) => {
-      const key = safeText_(row[0]);
-      if (key) {
-        settings[key] = row[1] != null ? String(row[1]) : '';
-      }
-    });
-    return settings;
-  });
-}
-
-/**
- * Returns a current user label suitable for logs.
- * @returns {string}
- */
-function getCurrentUserLabel_() {
-  try {
-    const email = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
-    return email || 'system';
-  } catch (error) {
-    return 'system';
-  }
-}
-
-/**
- * Removes unsafe characters and trims input text.
- * @param {*} value
- * @returns {string}
- */
-function safeText_(value) {
-  return String(value == null ? '' : value)
-    .replace(/[\u0000-\u001f<>]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Normalizes a search query for comparisons.
- * @param {*} value
- * @returns {string}
- */
-function normalizeText_(value) {
-  return safeText_(value).toLowerCase();
-}
-
-/**
- * Converts a value to a Date when possible.
- * @param {*} value
- * @returns {Date|null}
- */
-function toDate_(value) {
-  if (!value) {
-    return null;
-  }
-  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    return new Date(value.getTime());
-  }
-  const parsed = new Date(value);
-  return isNaN(parsed.getTime()) ? null : parsed;
-}
-
-/**
- * Converts a date-like value into an ISO date string.
- * @param {*} value
- * @returns {string}
- */
-function toIsoDate_(value) {
-  const date = toDate_(value);
-  if (!date) {
-    return '';
-  }
-  return Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyy-MM-dd');
-}
-
-/**
- * Converts a date-like value into an ISO timestamp string.
- * @param {*} value
- * @returns {string}
- */
-function toIsoDateTime_(value) {
-  const date = toDate_(value);
-  if (!date) {
-    return '';
-  }
-  return Utilities.formatDate(date, APP_CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ss");
-}
-
-/**
- * Formats a date in Thai Buddhist calendar format.
- * @param {*} value
- * @returns {string}
- */
-function formatThaiDate_(value) {
-  const date = toDate_(value);
-  if (!date) {
-    return '-';
-  }
-  const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-  const day = Utilities.formatDate(date, APP_CONFIG.timeZone, 'd');
-  const month = thaiMonths[Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'M')) - 1];
-  const year = Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyy')) + 543;
-  return `${day} ${month} ${year}`;
-}
-
-/**
- * Formats a timestamp for audit display.
- * @param {*} value
- * @returns {string}
- */
-function formatThaiDateTime_(value) {
-  const date = toDate_(value);
-  if (!date) {
-    return '-';
-  }
-  const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-  const day = Utilities.formatDate(date, APP_CONFIG.timeZone, 'd');
-  const month = thaiMonths[Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'M')) - 1];
-  const year = Number(Utilities.formatDate(date, APP_CONFIG.timeZone, 'yyyy')) + 543;
-  const time = Utilities.formatDate(date, APP_CONFIG.timeZone, 'HH:mm');
-  return `${day} ${month} ${year} ${time}`;
-}
-
-/**
- * Returns the current date with the correct timezone.
- * @returns {Date}
- */
-function todayInBangkok_() {
-  const now = new Date();
-  const dateString = Utilities.formatDate(now, APP_CONFIG.timeZone, 'yyyy-MM-dd');
-  return new Date(`${dateString}T00:00:00`);
-}
-
-/**
- * Calculates the whole-day difference between two dates.
- * @param {Date} endDate
- * @param {Date} startDate
+ * Scans the receive log once to establish the next ItemCode sequence.
+ * @param {string} prefix
  * @returns {number}
  */
-function daysBetween_(endDate, startDate) {
-  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-  return Math.round((end.getTime() - start.getTime()) / 86400000);
+function scanNextItemSequence_(prefix) {
+  const sheet = getSheet_(SHEET_NAMES.RECEIVE);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return 1;
+  }
+  const codes = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+  let nextNumber = 1;
+  codes.forEach((row) => {
+    const code = safeText_(row[0]);
+    if (code.startsWith(prefix)) {
+      const number = Number(code.split('-').pop()) || 0;
+      if (number >= nextNumber) {
+        nextNumber = number + 1;
+      }
+    }
+  });
+  return nextNumber;
 }
 
 /**
- * Calculates a stock status based on remaining quantity and expiry.
- * @param {*} expireDateValue
- * @param {*} quantityValue
- * @returns {{label: string, daysLeft: number|null, key: string}}
- */
-function calculateStockStatus_(expireDateValue, quantityValue) {
-  const quantity = Number(quantityValue) || 0;
-  if (quantity <= 0) {
-    return { label: STATUS_LABELS.EMPTY, daysLeft: null, key: 'empty' };
-  }
-  const expireDate = toDate_(expireDateValue);
-  if (!expireDate) {
-    return { label: STATUS_LABELS.NORMAL, daysLeft: null, key: 'normal' };
-  }
-  const today = todayInBangkok_();
-  const daysLeft = daysBetween_(expireDate, today);
-  if (daysLeft < 0) {
-    return { label: STATUS_LABELS.EXPIRED, daysLeft, key: 'expired' };
-  }
-  if (daysLeft === 0) {
-    return { label: STATUS_LABELS.EXPIRED_TODAY, daysLeft, key: 'expiredToday' };
-  }
-  if (daysLeft === 1) {
-    return { label: STATUS_LABELS.EXPIRING_1, daysLeft, key: 'expiring1' };
-  }
-  if (daysLeft === 2) {
-    return { label: STATUS_LABELS.EXPIRING_2, daysLeft, key: 'expiring2' };
-  }
-  if (daysLeft === 3) {
-    return { label: STATUS_LABELS.EXPIRING_3, daysLeft, key: 'expiring3' };
-  }
-  return { label: STATUS_LABELS.NORMAL, daysLeft, key: 'normal' };
-}
-
-/**
- * Returns the app shell assets for the frontend.
+ * Returns dashboard counts from the current stock snapshot.
  * @returns {Object}
  */
-function getAppBootstrapData_() {
-  const settings = getSettingsMap_();
+function getDashboardMetrics_() {
+  return withCachedJson_(CACHE_SCOPES.STOCK, { kind: 'metrics' }, () => buildDashboardMetricsFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows));
+}
+
+/**
+ * Returns a paginated stock page with server-side search and sorting.
+ * @param {Object} params
+ * @returns {Object}
+ */
+function getStockPage_(params) {
+  const cachePayload = {
+    kind: 'page',
+    page: Number(params.page) || 1,
+    pageSize: Number(params.pageSize) || 10,
+    query: normalizeText_(params.query),
+    status: normalizeText_(params.status || 'all'),
+    sortField: safeText_(params.sortField || 'LastUpdate'),
+    sortDirection: String(params.sortDirection || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc'
+  };
+  return withCachedJson_(CACHE_SCOPES.STOCK, cachePayload, () => {
+    return buildStockPageFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows, params);
+  });
+}
+
+/**
+ * Searches stock items for barcode or name lookups.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function searchStock_(params) {
+  return withCachedJson_(CACHE_SCOPES.STOCK, { kind: 'search', query: normalizeText_(params.query) }, () => {
+    const query = normalizeText_(params.query);
+    if (!query) {
+      return [];
+    }
+    return buildStockPageFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows, {
+      page: 1,
+      pageSize: 20,
+      query,
+      status: 'all',
+      sortField: 'LastUpdate',
+      sortDirection: 'desc'
+    }).items;
+  });
+}
+
+/**
+ * Returns stock rows by dashboard status key.
+ * @param {Object} params
+ * @returns {Array<Object>}
+ */
+function getStockByStatus_(params) {
+  return withCachedJson_(CACHE_SCOPES.STOCK, { kind: 'status', statusKey: normalizeText_(params.statusKey || params.status || 'all') }, () => {
+    const statusKey = normalizeText_(params.statusKey || params.status || 'all');
+    return buildStockPageFromRows_(loadStockRowsRaw_({ syncSheet: true }).rows, {
+      page: 1,
+      pageSize: 1000,
+      maxPageSize: 1000,
+      query: '',
+      status: statusKey,
+      sortField: 'expireDate',
+      sortDirection: 'asc'
+    }).items;
+  });
+}
+
+/**
+ * Receives stock into the current inventory and logs the transaction.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function receiveStock_(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const itemName = safeText_(payload.itemName);
+    const receiveDate = toDate_(payload.receiveDate) || todayInBangkok_();
+    const sterileDate = toDate_(payload.sterileDate);
+    const expireDate = toDate_(payload.expireDate);
+    const quantity = Number(payload.quantity) || 0;
+    const note = safeText_(payload.note);
+
+    if (!itemName) throw new Error('VALIDATION:กรุณาเลือกรายการรับเข้า');
+    if (!receiveDate) throw new Error('VALIDATION:กรุณาระบุวันที่รับเข้า');
+    if (!sterileDate) throw new Error('VALIDATION:กรุณาระบุวันที่นึ่ง');
+    if (!expireDate) throw new Error('VALIDATION:กรุณาระบุวันที่หมดอายุ');
+    if (quantity <= 0) throw new Error('VALIDATION:จำนวนรับต้องมากกว่า 0');
+    if (expireDate <= sterileDate) throw new Error('VALIDATION:วันหมดอายุต้องมากกว่าวันที่นึ่ง');
+
+    const master = getMasterItems_().find((item) => normalizeText_(item.name) === normalizeText_(itemName));
+    if (!master) {
+      throw new Error('VALIDATION:ไม่พบรายการในชีต Data กรุณาเพิ่ม master data ก่อนรับเข้า');
+    }
+
+    const itemCode = allocateItemCode_(receiveDate, true);
+    const now = new Date();
+    const status = calculateStockStatus_(expireDate, quantity);
+    const createdBy = getCurrentUserLabel_();
+
+    const stockSheet = getSheet_(SHEET_NAMES.STOCK);
+    const stockRow = [itemCode, master.name, receiveDate, sterileDate, expireDate, quantity, status.label, now];
+    stockSheet.getRange(stockSheet.getLastRow() + 1, 1, 1, stockRow.length).setValues([stockRow]);
+
+    const receiveSheet = getSheet_(SHEET_NAMES.RECEIVE);
+    const receiveRow = [`RCV-${itemCode}`, itemCode, receiveDate, master.name, sterileDate, expireDate, quantity, "No", createdBy, now];
+    receiveSheet.getRange(receiveSheet.getLastRow() + 1, 1, 1, receiveRow.length).setValues([receiveRow]);
+    bumpCacheVersions_([CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+
+    return {
+      ok: true,
+      message: 'บันทึกรับเข้าสำเร็จ',
+      item: {
+        itemCode,
+        name: master.name,
+        receiveDate: toIsoDate_(receiveDate),
+        sterileDate: toIsoDate_(sterileDate),
+        expireDate: toIsoDate_(expireDate),
+        quantity,
+        status: status.label
+      }
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Dispatches stock out of inventory and logs the operation.
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function dispatchStock_(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const itemCode = safeText_(payload.itemCode);
+    const dispatchDate = toDate_(payload.dispatchDate) || todayInBangkok_();
+    const quantity = Number(payload.quantity) || 0;
+    const dispatchType = safeText_(payload.dispatchType);
+    const note = safeText_(payload.note);
+
+    if (!itemCode) throw new Error('VALIDATION:กรุณาเลือกรายการก่อนจ่ายออก');
+    if (!dispatchDate) throw new Error('VALIDATION:กรุณาระบุวันที่จ่ายออก');
+    if (!dispatchType) throw new Error('VALIDATION:กรุณาเลือกประเภทการจ่าย');
+    if (quantity <= 0) throw new Error('VALIDATION:จำนวนจ่ายออกต้องมากกว่า 0');
+
+    const stockSheet = getSheet_(SHEET_NAMES.STOCK);
+    const stockRows = loadStockRowsRaw_({ syncSheet: true }).rows;
+    // Use normalizeText_ (case/whitespace tolerant) instead of strict ===
+    // so a code scanned with different casing or stray whitespace still
+    // matches the row that was actually rendered to the user.
+    const targetRow = stockRows.find((row) => normalizeText_(row.itemCode) === normalizeText_(itemCode));
+    if (!targetRow) {
+      throw new Error('VALIDATION:ไม่พบรายการในคลังหรือรายการนี้ถูกตัดจ่ายหมดแล้ว');
+    }
+
+    const remaining = Number(targetRow.quantity) || 0;
+    if (quantity > remaining) {
+      throw new Error(`VALIDATION:จำนวนจ่ายออกเกินคงเหลือ (${remaining})`);
+    }
+
+    const itemName = safeText_(targetRow.name);
+    const newRemaining = remaining - quantity;
+    const status = calculateStockStatus_(targetRow.expireDate, newRemaining);
+    const now = new Date();
+    const createdBy = getCurrentUserLabel_();
+
+    if (newRemaining <= 0) {
+      stockSheet.deleteRow(targetRow.rowIndex);
+    } else {
+      stockSheet.getRange(targetRow.rowIndex, 6, 1, 3).setValues([[newRemaining, status.label, now]]);
+    }
+    // Force the Stock write/delete to commit immediately instead of being
+    // batched with later operations, so a concurrent read (e.g. the
+    // dashboard refresh that fires right after this call returns) can never
+    // observe a stale quantity.
+    SpreadsheetApp.flush();
+
+    const dispatchSheet = getSheet_(SHEET_NAMES.DISPATCH);
+    const dispatchRow = [`DSP-${Utilities.getUuid().slice(0, 8)}`, itemCode, itemName, dispatchDate, quantity, dispatchType, note, createdBy, now];
+    dispatchSheet.getRange(dispatchSheet.getLastRow() + 1, 1, 1, dispatchRow.length).setValues([dispatchRow]);
+    bumpCacheVersions_([CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+
+    return {
+      ok: true,
+      message: newRemaining <= 0 ? 'ตัดจ่ายและลบรายการออกจาก Stock แล้ว' : 'ตัดจ่ายสำเร็จ',
+      remaining: newRemaining,
+      deleted: newRemaining <= 0,
+      item: {
+        itemCode,
+        name: itemName,
+        remaining: newRemaining,
+        status: status.label
+      }
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+function getLabelInfo_(payload) {
+  const itemCode = safeText_(payload.itemCode);
+  if (!itemCode) {
+    throw new Error('VALIDATION:กรุณาระบุ ItemCode');
+  }
+
+  const receiveSheet = getSheet_(SHEET_NAMES.RECEIVE);
+  const stockSheet = getSheet_(SHEET_NAMES.STOCK);
+  const receiveRows = receiveSheet.getDataRange().getValues();
+  const stockRows = stockSheet.getDataRange().getValues();
+
+  const receiveRow = receiveRows.find((row, index) => index > 0 && safeText_(row[1]) === itemCode);
+  const stockRow = stockRows.find((row, index) => index > 0 && safeText_(row[0]) === itemCode);
+
+  if (!receiveRow) {
+    throw new Error('ไม่พบข้อมูลสำหรับการพิมพ์ย้อนหลัง');
+  }
+
   return {
-    app: getAppConfig_(),
-    settings,
-    masters: getMasterItems_(),
-    dashboard: getDashboardMetrics_(),
-    stockPage: getStockPage_({ page: 1, pageSize: 10, query: '', status: 'all', sortField: 'LastUpdate', sortDirection: 'desc' })
+    ok: true,
+    item: {
+      itemCode,
+      name: safeText_(receiveRow[3]),
+      receiveDate: toIsoDate_(receiveRow[2]),
+      sterileDate: toIsoDate_(receiveRow[4]),
+      expireDate: toIsoDate_(receiveRow[5]),
+      quantity: Number(receiveRow[6]) || 0,
+      printed: safeText_(receiveRow[7]) === 'Yes',
+      remaining: stockRow ? Number(stockRow[5]) || 0 : 0,
+      status: stockRow ? safeText_(stockRow[6]) : 'หมดจ่ายแล้ว'
+    }
   };
 }
 
 /**
- * Serves dynamic app assets such as the manifest and service worker.
- * @param {string} asset
- * @returns {GoogleAppsScript.Content.TextOutput}
+ * Marks a receive log as printed.
+ * @param {Object} payload
+ * @returns {Object}
  */
-function serveAsset_(asset) {
-  if (asset === 'manifest') {
-    return ContentService
-      .createTextOutput(buildManifest_())
-      .setMimeType(ContentService.MimeType.JSON);
+function markReceivePrinted_(payload) {
+  const itemCode = safeText_(payload.itemCode);
+  if (!itemCode) {
+    throw new Error('VALIDATION:กรุณาระบุ ItemCode');
   }
-  if (asset === 'sw' || asset === 'service-worker') {
-    return ContentService
-      .createTextOutput(buildServiceWorker_())
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+
+  const receiveSheet = getSheet_(SHEET_NAMES.RECEIVE);
+  const values = receiveSheet.getDataRange().getValues();
+  const rowIndex = values.findIndex((row, index) => index > 0 && safeText_(row[1]) === itemCode);
+  if (rowIndex < 0) {
+    throw new Error('ไม่พบ Receive Log ที่ต้องการอัปเดตการพิมพ์');
   }
-  return ContentService.createTextOutput('');
+  receiveSheet.getRange(rowIndex + 1, 8, 1, 1).setValues([['Yes']]);
+  bumpCacheVersions_([CACHE_SCOPES.MASTERS, CACHE_SCOPES.STOCK, CACHE_SCOPES.DASHBOARD, CACHE_SCOPES.SUMMARY]);
+  return { ok: true };
 }
 
 /**
- * Builds the PWA manifest at runtime so it works inside GAS.
- * @returns {string}
+ * Reloads stock statuses in the sheet so metric cards always stay current.
+ * @returns {void}
  */
-function buildManifest_() {
-  const baseUrl = getWebAppUrl_() || '.';
-  const manifest = {
-    name: APP_CONFIG.title,
-    short_name: APP_CONFIG.shortTitle,
-    start_url: baseUrl,
-    scope: baseUrl,
-    display: 'standalone',
-    orientation: 'portrait-primary',
-    background_color: '#f8fafc',
-    theme_color: '#0f766e',
-    icons: [
-      { src: APP_ICON_DATA_URL, sizes: '192x192', type: 'image/png' },
-      { src: APP_ICON_DATA_URL, sizes: '512x512', type: 'image/png' }
-    ]
+function refreshStockStatuses_() {
+  loadStockRowsRaw_({ syncSheet: true });
+}
+
+/**
+ * Loads stock rows from the sheet and computes derived properties.
+ * @returns {Array<Object>}
+ */
+function loadStockRows_() {
+  return loadStockRowsRaw_({ syncSheet: false }).rows;
+}
+
+/**
+ * Maps a stock row into a frontend-safe payload.
+ * @param {Object} row
+ * @returns {Object}
+ */
+function mapStockRow_(row) {
+  return {
+    itemCode: row.itemCode,
+    name: row.name,
+    receiveDate: toIsoDate_(row.receiveDate),
+    sterileDate: toIsoDate_(row.sterileDate),
+    expireDate: toIsoDate_(row.expireDate),
+    quantity: row.quantity,
+    status: row.status,
+    statusKey: row.statusKey,
+    daysLeft: row.daysLeft,
+    lastUpdate: toIsoDateTime_(row.lastUpdate)
   };
-  return JSON.stringify(manifest);
 }
 
 /**
- * Builds the service worker script used for offline shell caching.
- * @returns {string}
+ * Comparison helper for sorting stock rows.
+ * @param {Object} row
+ * @param {string} sortField
+ * @returns {*}
  */
-function buildServiceWorker_() {
-  return `
-const CACHE_NAME = 'sterile-stock-v1';
-const APP_SHELL = self.location.origin + self.location.pathname;
-const CORE_ASSETS = [
-  APP_SHELL,
-  APP_SHELL + '?asset=manifest'
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())
-  );
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
-    return;
+function compareValueForSort_(row, sortField) {
+  switch (normalizeText_(sortField)) {
+    case 'itemcode':
+      return row.itemCode;
+    case 'ชื่อรายการ':
+    case 'name':
+      return row.name;
+    case 'วันที่รับเข้า':
+    case 'receivedate':
+      return row.receiveDate ? row.receiveDate.getTime() : 0;
+    case 'วันที่นึ่ง':
+    case 'steriledate':
+      return row.sterileDate ? row.sterileDate.getTime() : 0;
+    case 'วันที่หมดอายุ':
+    case 'expiredate':
+      return row.expireDate ? row.expireDate.getTime() : 0;
+    case 'จำนวนคงเหลือ':
+    case 'quantity':
+      return row.quantity;
+    case 'lastupdate':
+      return row.lastUpdate ? row.lastUpdate.getTime() : 0;
+    default:
+      return row.lastUpdate ? row.lastUpdate.getTime() : 0;
   }
-  const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin === self.location.origin && requestUrl.pathname === self.location.pathname) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(APP_SHELL, clone));
-          return response;
-        })
-        .catch(() => caches.match(APP_SHELL).then((cached) => cached || caches.match(event.request)))
-    );
-    return;
-  }
-  event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
-  );
-});
-  `.trim();
 }
