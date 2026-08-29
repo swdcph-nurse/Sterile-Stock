@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>คู่มือการใช้งาน Sterile STOCK</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'IBM Plex Sans Thai', sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto 12mm;
+      background: white;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+    :root {
+      --teal-900: #134e4a; --teal-800: #115e59; --teal-700: #0f766e;
+      --teal-600: #0d9488; --teal-500: #14b8a6; --teal-400: #2dd4bf;
+      --teal-100: #ccfbf1; --teal-50: #f0fdfa;
+      --sky-600: #0284c7; --sky-500: #0ea5e9; --sky-400: #38bdf8;
+      --sky-100: #e0f2fe;
+      --slate-900: #0f172a; --slate-800: #1e293b; --slate-700: #334155;
+      --slate-600: #475569; --slate-500: #64748b; --slate-400: #94a3b8;
+      --slate-200: #e2e8f0; --slate-100: #f1f5f9; --slate-50: #f8fafc;
+    }
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8mm 12mm 6mm;
+      border-bottom: 2px solid;
+      border-image: linear-gradient(90deg, #0f766e, #0ea5e9) 1;
+      background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+    }
+    .page-header .brand { display: flex; align-items: center; gap: 8px; }
+    .page-header .brand-icon { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+    .page-header .brand-name { font-size: 11pt; font-weight: 700; color: #0f766e; line-height: 1.2; }
+    .page-header .brand-sub { font-size: 7pt; color: #64748b; font-weight: 500; }
+    .page-header .page-label { font-size: 8pt; font-weight: 600; color: #64748b; text-align: right; }
+    .page-header .page-num { font-size: 11pt; font-weight: 700; color: #0f766e; }
+    .page-footer {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 4mm 12mm;
+      border-top: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f8fafc;
+    }
+    .page-footer .footer-text { font-size: 7pt; color: #94a3b8; }
+    .page-footer .footer-badge {
+      font-size: 7pt; font-weight: 700; color: #0f766e;
+      background: #f0fdfa; border: 1px solid #ccfbf1;
+      border-radius: 999px; padding: 1.5px 7px;
+    }
+    .page-body { padding: 8mm 12mm 22mm; }
+    .section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 5mm; }
+    .section-icon {
+      width: 30px; height: 30px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .section-title h2 { font-size: 16pt; font-weight: 700; color: #0f172a; line-height: 1.2; }
+    .section-title .sub { font-size: 9pt; color: #64748b; }
+    .card {
+      border-radius: 12px; border: 1px solid #e2e8f0;
+      background: white; box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+      overflow: hidden;
+    }
+    .card-teal { background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%); border-color: #ccfbf1; }
+    .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: 7.5pt; font-weight: 700; }
+    .steps { list-style: none; display: flex; flex-direction: column; gap: 3.5mm; }
+    .step-item { display: flex; align-items: flex-start; gap: 10px; }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9pt; font-weight: 700; color: white; flex-shrink: 0; margin-top: 1px;
+    }
+    .step-num.teal { background: linear-gradient(135deg, #0f766e, #0ea5e9); }
+    .step-num.sky  { background: linear-gradient(135deg, #0284c7, #14b8a6); }
+    .step-num.red  { background: linear-gradient(135deg, #dc2626, #ef4444); }
+    .step-content strong { font-weight: 700; color: #0f172a; font-size: 9.5pt; }
+    .step-content p { color: #64748b; font-size: 8.5pt; margin-top: 1px; }
+    .status-table { width: 100%; border-collapse: collapse; }
+    .status-table td { padding: 2.5mm 3mm; vertical-align: top; }
+    .status-table tr:not(:last-child) td { border-bottom: 1px solid #f1f5f9; }
+    .status-dot {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 2px 9px; border-radius: 999px; font-size: 8pt; font-weight: 700; white-space: nowrap;
+    }
+    .dot-green   { background: #dcfce7; color: #15803d; }
+    .dot-amber3  { background: #fef9c3; color: #a16207; }
+    .dot-amber2  { background: #fef3c7; color: #92400e; }
+    .dot-amber1  { background: #ffedd5; color: #c2410c; }
+    .dot-orange  { background: #ffedd5; color: #c2410c; }
+    .dot-red     { background: #fee2e2; color: #b91c1c; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; }
+    .info-box { border-radius: 10px; padding: 4mm; border-left: 4px solid; }
+    .info-box.teal { background: #f0fdfa; border-color: #0d9488; }
+    .info-box.sky  { background: #e0f2fe; border-color: #0284c7; }
+    .info-box.amber{ background: #fffbeb; border-color: #d97706; }
+    .info-box h4   { font-size: 9pt; font-weight: 700; margin-bottom: 2mm; }
+    .info-box p, .info-box li { font-size: 8.5pt; color: #334155; }
+    .info-box ul { padding-left: 1em; }
+    .screenshot-frame {
+      border-radius: 10px; overflow: hidden;
+      border: 1.5px solid #e2e8f0;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.10);
+    }
+    .screenshot-frame img { width: 100%; display: block; }
+    .screenshot-caption {
+      background: #f8fafc; border-top: 1px solid #e2e8f0;
+      padding: 2mm 4mm; font-size: 7.5pt; color: #64748b; font-style: italic;
+    }
+    .metric-mini {
+      border-radius: 10px; padding: 3.5mm 4mm;
+      border: 1px solid #e2e8f0; background: white;
+    }
+    .metric-mini .m-label { font-size: 7.5pt; color: #64748b; font-weight: 600; }
+    .metric-mini .m-value { font-size: 18pt; font-weight: 700; line-height: 1.1; margin-top: 1mm; }
+    .doc-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    .doc-table th {
+      background: linear-gradient(135deg, #0f766e, #0284c7);
+      color: white; padding: 2.5mm 3mm; font-weight: 700; text-align: left;
+    }
+    .doc-table td { padding: 2.5mm 3mm; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    .doc-table tr:last-child td { border-bottom: none; }
+    .doc-table tr:nth-child(even) td { background: #f8fafc; }
+    .divider {
+      height: 2px;
+      background: linear-gradient(90deg, #0f766e, #0ea5e9, transparent);
+      border-radius: 999px; margin: 4mm 0; opacity: 0.25;
+    }
+    .pill { display: inline-block; padding: 1.5px 8px; border-radius: 999px; font-size: 7.5pt; font-weight: 700; }
+    .pill-teal { background: #ccfbf1; color: #0f766e; }
+    .pill-sky  { background: #e0f2fe; color: #0284c7; }
+    .pill-red  { background: #fee2e2; color: #b91c1c; }
+
+    /* COVER */
+    .cover-page {
+      background: linear-gradient(155deg, #0f766e 0%, #0d9488 30%, #0ea5e9 70%, #0284c7 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 297mm; position: relative; overflow: hidden;
+    }
+    .cover-page::before {
+      content: ''; position: absolute;
+      width: 380px; height: 380px; border-radius: 50%;
+      background: rgba(255,255,255,0.06); top: -80px; right: -80px;
+    }
+    .cover-page::after {
+      content: ''; position: absolute;
+      width: 280px; height: 280px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); bottom: -60px; left: -60px;
+    }
+    .cover-deco1 { position: absolute; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.05); bottom: 80px; right: 60px; }
+    .cover-deco2 { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.08); top: 120px; left: 40px; }
+    .cover-deco3 { position: absolute; width: 200px; height: 200px; border: 2px solid rgba(255,255,255,0.08); border-radius: 50%; top: 40px; left: -60px; }
+    .cover-grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 20mm 20mm;
+    }
+    .cover-content {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      padding: 0 20mm;
+    }
+    .cover-icon-wrap {
+      width: 100px; height: 100px; border-radius: 28px;
+      background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+      border: 2px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 8mm; box-shadow: 0 16px 40px rgba(0,0,0,0.20);
+    }
+    .cover-icon-wrap img { width: 68px; height: 68px; object-fit: contain; }
+    .cover-eyebrow { font-size: 8pt; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 4mm; }
+    .cover-title-main { font-size: 10pt; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 2mm; }
+    .cover-app-name { font-size: 30pt; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 2mm; text-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+    .cover-app-sub { font-size: 11pt; color: rgba(255,255,255,0.80); margin-bottom: 10mm; }
+    .cover-divider { width: 60mm; height: 2px; background: rgba(255,255,255,0.25); border-radius: 999px; margin: 0 auto 10mm; }
+    .cover-hospital-box {
+      background: rgba(255,255,255,0.12); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
+      padding: 6mm 10mm; margin-bottom: 10mm; max-width: 160mm;
+    }
+    .cover-hospital-name { font-size: 12pt; font-weight: 700; color: white; line-height: 1.4; }
+    .cover-hospital-dept { font-size: 9.5pt; color: rgba(255,255,255,0.80); margin-top: 2mm; line-height: 1.6; }
+    .cover-meta { display: flex; align-items: center; gap: 6mm; margin-top: 6mm; }
+    .cover-meta-item { text-align: center; }
+    .cover-meta-item .m-val { font-size: 18pt; font-weight: 700; color: white; line-height: 1; }
+    .cover-meta-item .m-lbl { font-size: 7.5pt; color: rgba(255,255,255,0.65); margin-top: 1mm; }
+    .cover-meta-sep { width: 1px; height: 30px; background: rgba(255,255,255,0.2); }
+    .cover-version-badge {
+      position: absolute; bottom: 14mm; right: 14mm;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 999px; padding: 3px 12px;
+      font-size: 7.5pt; color: rgba(255,255,255,0.75); font-weight: 600;
+    }
+    .cover-year-badge {
+      position: absolute; bottom: 14mm; left: 14mm;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 999px; padding: 3px 12px;
+      font-size: 7.5pt; color: rgba(255,255,255,0.65); font-weight: 600;
+    }
+
+    @media print {
+      body { background: white; }
+      .page { margin: 0; box-shadow: none; }
+      @page { size: A4; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== COVER ===== -->
+<div class="page cover-page">
+  <div class="cover-grid"></div>
+  <div class="cover-deco1"></div>
+  <div class="cover-deco2"></div>
+  <div class="cover-deco3"></div>
+  <div class="cover-content">
+    <div class="cover-eyebrow">Enterprise Inventory System</div>
+    <div class="cover-icon-wrap">
+      <img src="./icon.png" alt="Sterile STOCK">
+    </div>
+    <div class="cover-title-main">คู่มือการใช้งาน (User Manual)</div>
+    <div class="cover-app-name">Sterile STOCK</div>
+    <div class="cover-app-sub">เว็บแอพลิเคชันระบบคลังเครื่องมือและวัสดุปราศจากเชื้อ</div>
+    <div class="cover-divider"></div>
+    <div class="cover-hospital-box">
+      <div class="cover-hospital-name">
+        &#x1F3E5; หอผู้ป่วยพิเศษปาริฉัตร &nbsp;&#183;&nbsp; หอสงฆ์อาพาธ
+      </div>
+      <div class="cover-hospital-dept">
+        โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน
+      </div>
+    </div>
+    <div class="cover-meta">
+      <div class="cover-meta-item"><div class="m-val">7</div><div class="m-lbl">หน้า</div></div>
+      <div class="cover-meta-sep"></div>
+      <div class="cover-meta-item"><div class="m-val">4</div><div class="m-lbl">ฟังก์ชันหลัก</div></div>
+      <div class="cover-meta-sep"></div>
+      <div class="cover-meta-item"><div class="m-val">PWA</div><div class="m-lbl">รองรับมือถือ</div></div>
+    </div>
+
+    <!-- QR Code Scan Box on Cover -->
+    <div style="background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);border:1.5px solid rgba(255,255,255,0.3);border-radius:16px;padding:3.5mm 6mm;margin-top:7mm;display:flex;align-items:center;gap:4mm;max-width:140mm;box-shadow:0 10px 25px rgba(0,0,0,0.15)">
+      <div style="background:white;border-radius:10px;padding:2px;display:flex;align-items:center;justify-content:center;width:52px;height:52px;flex-shrink:0;box-shadow:0 4px 10px rgba(0,0,0,0.12)">
+        <img src="./.manual-assets/app-qrcode.png" alt="QR Code" style="width:48px;height:48px;display:block;border-radius:6px">
+      </div>
+      <div style="text-align:left;color:white">
+        <div style="font-size:8pt;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#ffffff">&#x1F4F1; สแกน QR Code เข้าใช้งานระบบ</div>
+        <div style="font-size:7.5pt;font-weight:600;font-family:monospace;margin-top:1px;word-break:break-all;color:#ccfbf1">https://swdcph-nurse.github.io/Sterile-Stock/</div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-version-badge">Version 1.0 &middot; 2569</div>
+  <div class="cover-year-badge">ปีงบประมาณ 2569</div>
+</div>
+
+<!-- ===== PAGE 1: INTRODUCTION ===== -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand">
+      <img src="./icon.png" alt="icon" class="brand-icon">
+      <div><div class="brand-name">Sterile STOCK</div><div class="brand-sub">Enterprise Inventory System</div></div>
+    </div>
+    <div class="page-label"><div>บทที่ 1</div><div class="page-num">หน้า 1 / 7</div></div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">
+      <div class="section-icon" style="background:linear-gradient(135deg,#0f766e,#0ea5e9)">&#x1F4D6;</div>
+      <div><h2>บทนำ</h2><div class="sub">Introduction &middot; ภาพรวมและวัตถุประสงค์ของระบบ</div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:5mm">
+      <div>
+        <div class="info-box teal" style="margin-bottom:4mm">
+          <h4 style="color:#0f766e">&#x1F3AF; วัตถุประสงค์ของระบบ</h4>
+          <ul style="padding-left:1.2em;line-height:1.9">
+            <li>บริหารจัดการคลังเครื่องมือและวัสดุปราศจากเชื้อ</li>
+            <li>ติดตามวันหมดอายุและแจ้งเตือนล่วงหน้าอัตโนมัติ</li>
+            <li>สร้างรหัส ItemCode และพิมพ์สติ๊กเกอร์ Thermal</li>
+            <li>บันทึกการรับเข้า-จ่ายออกพร้อม Barcode/QR Code</li>
+            <li>สรุปรายงานสถิติตามปีงบประมาณ</li>
+            <li>แจ้งเตือนผ่าน LINE เมื่อวัสดุใกล้หมดอายุ</li>
+          </ul>
+        </div>
+        <div class="card card-teal" style="padding:4mm">
+          <div style="font-size:9pt;font-weight:700;color:#0f766e;margin-bottom:2mm">&#x2699;&#xFE0F; โครงสร้างระบบ Backend</div>
+          <div class="grid-2" style="gap:3mm;font-size:8pt;color:#334155">
+            <div style="background:white;border-radius:8px;padding:2.5mm;border:1px solid #ccfbf1;text-align:center">
+              <div style="font-size:14pt">&#x2601;&#xFE0F;</div>
+              <div style="font-weight:700;color:#0f766e">Google Apps Script</div>
+              <div style="color:#64748b;margin-top:1mm">API Backend</div>
+            </div>
+            <div style="background:white;border-radius:8px;padding:2.5mm;border:1px solid #ccfbf1;text-align:center">
+              <div style="font-size:14pt">&#x1F4CA;</div>
+              <div style="font-weight:700;color:#0f766e">Google Sheets</div>
+              <div style="color:#64748b;margin-top:1mm">ฐานข้อมูล</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="info-box sky" style="margin-bottom:4mm">
+          <h4 style="color:#0284c7">&#x1F465; กลุ่มเป้าหมายผู้ใช้งาน</h4>
+          <table style="width:100%;font-size:8.5pt;border-collapse:collapse;margin-top:2mm">
+            <tr><td style="padding:1.5mm 0;border-bottom:1px solid #bae6fd"><span style="font-size:14px">&#x1F469;&#x200D;&#x2695;&#xFE0F;</span> <strong>พยาบาลวิชาชีพ</strong></td><td style="padding:1.5mm 0;border-bottom:1px solid #bae6fd;color:#475569">รับเข้า-จ่ายออก</td></tr>
+            <tr><td style="padding:1.5mm 0;border-bottom:1px solid #bae6fd"><span style="font-size:14px">&#x1F469;&#x200D;&#x1F4BC;</span> <strong>หัวหน้าหอผู้ป่วย</strong></td><td style="padding:1.5mm 0;border-bottom:1px solid #bae6fd;color:#475569">ดูรายงานและสถิติ</td></tr>
+            <tr><td style="padding:1.5mm 0"><span style="font-size:14px">&#x1F6E0;&#xFE0F;</span> <strong>ผู้ดูแลระบบ</strong></td><td style="padding:1.5mm 0;color:#475569">ตั้งค่าและจัดการข้อมูล</td></tr>
+          </table>
+        </div>
+        <div class="card" style="padding:4mm">
+          <div style="font-size:9pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4CB; ภาพรวมฟังก์ชันระบบ</div>
+          <div style="display:flex;flex-direction:column;gap:2mm">
+            <div style="display:flex;align-items:center;gap:8px;background:#f0fdfa;border-radius:8px;padding:2mm 3mm"><span style="font-size:16px">&#x1F3E0;</span><div><div style="font-size:8.5pt;font-weight:700;color:#0f766e">แดชบอร์ด (Dashboard)</div><div style="font-size:7.5pt;color:#64748b">ภาพรวมคลัง สถานะ และตารางคงคลัง</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#e0f2fe;border-radius:8px;padding:2mm 3mm"><span style="font-size:16px">&#x1F4E5;</span><div><div style="font-size:8.5pt;font-weight:700;color:#0284c7">รับเข้า (Receive)</div><div style="font-size:7.5pt;color:#64748b">บันทึกและพิมพ์สติ๊กเกอร์ Thermal</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fef2f2;border-radius:8px;padding:2mm 3mm"><span style="font-size:16px">&#x1F4E4;</span><div><div style="font-size:8.5pt;font-weight:700;color:#b91c1c">จ่ายออก (Dispatch)</div><div style="font-size:7.5pt;color:#64748b">สแกนบาร์โค้ดหรือค้นหา แล้วตัดจ่าย</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;background:#f8fafc;border-radius:8px;padding:2mm 3mm"><span style="font-size:16px">&#x1F4CA;</span><div><div style="font-size:8.5pt;font-weight:700;color:#334155">รายงานสรุป (Reports)</div><div style="font-size:7.5pt;color:#64748b">กราฟและสถิติตามปีงบประมาณ</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="card" style="padding:4mm;background:linear-gradient(135deg,#f0fdfa,#e0f2fe)">
+      <div style="font-size:9pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F516; รูปแบบรหัส ItemCode ที่ระบบสร้างอัตโนมัติ</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:0;font-size:16pt;font-weight:700;font-family:monospace;letter-spacing:0.05em">
+        <span style="background:#0f766e;color:white;padding:2mm 4mm;border-radius:8px 0 0 8px">STK</span>
+        <span style="background:#64748b;color:white;padding:2mm 3mm">-</span>
+        <span style="background:#0284c7;color:white;padding:2mm 4mm">YYYYMMDD</span>
+        <span style="background:#64748b;color:white;padding:2mm 3mm">-</span>
+        <span style="background:#0d9488;color:white;padding:2mm 4mm;border-radius:0 8px 8px 0">XXXX</span>
+      </div>
+      <div style="display:flex;justify-content:center;gap:20mm;margin-top:3mm;font-size:7.5pt;color:#64748b">
+        <span>คำนำหน้า</span><span>วันที่รับเข้า (พ.ศ.)</span><span>ลำดับรายการ</span>
+      </div>
+      <div style="text-align:center;margin-top:2mm;font-size:8pt;color:#0f766e;font-weight:600">ตัวอย่าง: STK-20260829-0001</div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <div class="footer-text">คู่มือการใช้งาน Sterile STOCK &middot; หอผู้ป่วยพิเศษปาริฉัตร - หอสงฆ์อาพาธ &middot; รพร.สว่างแดนดิน</div>
+    <div class="footer-badge">หน้า 1</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 2: GETTING STARTED ===== -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand"><img src="./icon.png" alt="icon" class="brand-icon"><div><div class="brand-name">Sterile STOCK</div><div class="brand-sub">Enterprise Inventory System</div></div></div>
+    <div class="page-label"><div>บทที่ 2</div><div class="page-num">หน้า 2 / 7</div></div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">
+      <div class="section-icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9)">&#x1F680;</div>
+      <div><h2>การเริ่มต้นใช้งาน</h2><div class="sub">Getting Started &middot; เข้าถึงผ่านเบราว์เซอร์และ PWA</div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:5mm">
+      <div>
+        <div style="font-size:10pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F310; การเข้าถึงผ่านเบราว์เซอร์</div>
+        <ul class="steps">
+          <li class="step-item"><div class="step-num teal">1</div><div class="step-content"><strong>เปิดเบราว์เซอร์</strong><p>แนะนำ Google Chrome หรือ Microsoft Edge เวอร์ชันล่าสุด</p></div></li>
+          <li class="step-item"><div class="step-num teal">2</div><div class="step-content"><strong>พิมพ์ URL ของระบบ</strong><p style="word-break:break-all"><a href="https://swdcph-nurse.github.io/Sterile-Stock/" target="_blank" style="color:#0f766e;font-weight:700;text-decoration:underline">https://swdcph-nurse.github.io/Sterile-Stock/</a></p></div></li>
+          <li class="step-item"><div class="step-num teal">3</div><div class="step-content"><strong>ระบบโหลดอัตโนมัติ</strong><p>ไม่ต้องล็อกอิน ระบบเริ่มทำงานได้ทันที พร้อมข้อมูลล่าสุดจากเซิร์ฟเวอร์</p></div></li>
+          <li class="step-item"><div class="step-num teal">4</div><div class="step-content"><strong>เลือกเมนูที่ต้องการ</strong><p>คลิกแท็บเมนูที่ด้านบน: แดชบอร์ด / รับเข้า / จ่ายออก / รายงานสรุป</p></div></li>
+        </ul>
+        <div class="info-box amber" style="margin-top:3.5mm">
+          <h4 style="color:#92400e">&#x1F4A1; เบราว์เซอร์ที่รองรับ</h4>
+          <div class="grid-2" style="gap:2mm;margin-top:1.5mm">
+            <div style="background:white;border-radius:6px;padding:1.5mm 3mm;font-size:8pt;text-align:center"><div>&#x1F535; Google Chrome</div><div style="color:#64748b;font-size:7.5pt">แนะนำ (v90+)</div></div>
+            <div style="background:white;border-radius:6px;padding:1.5mm 3mm;font-size:8pt;text-align:center"><div>&#x1F537; Microsoft Edge</div><div style="color:#64748b;font-size:7.5pt">รองรับ (Chromium)</div></div>
+            <div style="background:white;border-radius:6px;padding:1.5mm 3mm;font-size:8pt;text-align:center"><div>&#x1F4F1; Chrome (Android)</div><div style="color:#64748b;font-size:7.5pt">รองรับ PWA</div></div>
+            <div style="background:white;border-radius:6px;padding:1.5mm 3mm;font-size:8pt;text-align:center"><div>&#x1F34E; Safari (iOS)</div><div style="color:#64748b;font-size:7.5pt">รองรับบางส่วน</div></div>
+          </div>
+        </div>
+        <!-- QR Code Card on Page 2 -->
+        <div class="card card-teal" style="padding:3mm 3.5mm;margin-top:3.5mm;display:flex;align-items:center;gap:3.5mm">
+          <div style="background:white;border-radius:10px;padding:2px;border:1px solid #ccfbf1;box-shadow:0 2px 8px rgba(15,118,110,0.12);flex-shrink:0">
+            <img src="./.manual-assets/app-qrcode.png" alt="QR Code" style="width:58px;height:58px;display:block">
+          </div>
+          <div>
+            <div style="font-size:8.5pt;font-weight:700;color:#0f766e">&#x1F4F1; สแกน QR Code เข้าใช้งาน</div>
+            <div style="font-size:7.5pt;color:#334155;margin-top:1px">ส่องกล้องมือถือ/แท็บเล็ตเพื่อเปิดระบบได้ทันที</div>
+            <div style="font-size:7pt;color:#0284c7;font-weight:600;margin-top:1px;font-family:monospace;word-break:break-all">https://swdcph-nurse.github.io/Sterile-Stock/</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4F2; การติดตั้ง PWA</div>
+        <div class="card card-teal" style="padding:4mm;margin-bottom:3mm">
+          <div style="font-size:8.5pt;font-weight:700;color:#0f766e;margin-bottom:2mm">&#x2705; ข้อดีของ PWA</div>
+          <ul style="font-size:8pt;color:#334155;padding-left:1.2em;line-height:1.9">
+            <li>เปิดได้เหมือนแอปปกติจากหน้าจอหลัก</li>
+            <li>ไม่มี Address Bar รบกวน</li>
+            <li>ทำงานได้เร็วขึ้น มีการแคชข้อมูล</li>
+            <li>รองรับบนมือถือ Android / iOS</li>
+          </ul>
+        </div>
+        <ul class="steps">
+          <li class="step-item"><div class="step-num sky">1</div><div class="step-content"><strong>เปิดเว็บในเบราว์เซอร์</strong><p>Chrome หรือ Edge บนคอมพิวเตอร์หรือมือถือ</p></div></li>
+          <li class="step-item"><div class="step-num sky">2</div><div class="step-content"><strong>คลิกปุ่ม "ติดตั้งแอป"</strong><p>ปรากฏที่มุมบนขวาของหน้าเว็บ หรือจากเมนูเบราว์เซอร์ &#x22EE;</p></div></li>
+          <li class="step-item"><div class="step-num sky">3</div><div class="step-content"><strong>กด "ติดตั้ง" ในกล่องยืนยัน</strong><p>ระบบสร้างไอคอนบนหน้าจอและ Taskbar อัตโนมัติ</p></div></li>
+          <li class="step-item"><div class="step-num sky">4</div><div class="step-content"><strong>เปิดแอปจากไอคอน</strong><p>คลิก/แตะไอคอน Sterile STOCK ได้ทันทีโดยไม่ต้องเปิดเบราว์เซอร์</p></div></li>
+        </ul>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F5C2;&#xFE0F; โครงสร้างหน้าจอหลัก (Layout Overview)</div>
+    <div style="border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;font-size:8pt;margin-bottom:4mm">
+      <div style="background:#f1f5f9;padding:2mm 4mm;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:3mm">
+        <div style="display:flex;gap:3px"><div style="width:8px;height:8px;border-radius:50%;background:#ef4444"></div><div style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></div><div style="width:8px;height:8px;border-radius:50%;background:#22c55e"></div></div>
+        <div style="flex:1;background:white;border-radius:4px;padding:1mm 3mm;font-family:monospace;font-size:7pt;color:#0f766e;font-weight:600">https://swdcph-nurse.github.io/Sterile-Stock/</div>
+      </div>
+      <div>
+        <div style="background:linear-gradient(135deg,#f0fdfa,#e0f2fe);padding:2.5mm 4mm;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:4px"><div style="width:18px;height:18px;background:#0ea5e9;border-radius:4px;opacity:0.7"></div><span style="font-weight:700;color:#0f766e;font-size:9pt">Sterile STOCK</span></div>
+          <span style="font-size:7pt;color:#64748b">ระบบคลังเครื่องมือและวัสดุปราศจากเชื้อ</span>
+        </div>
+        <div style="background:white;padding:1.5mm 4mm;border-bottom:1px solid #e2e8f0;display:flex;gap:3mm">
+          <span style="background:linear-gradient(135deg,#0f766e,#0ea5e9);color:white;border-radius:999px;padding:1mm 4mm;font-size:8pt;font-weight:700">แดชบอร์ด</span>
+          <span style="color:#334155;padding:1mm 4mm;font-size:8pt;font-weight:600">รับเข้า</span>
+          <span style="color:#334155;padding:1mm 4mm;font-size:8pt;font-weight:600">จ่ายออก</span>
+          <span style="color:#334155;padding:1mm 4mm;font-size:8pt;font-weight:600">รายงานสรุป</span>
+        </div>
+        <div style="padding:5mm 4mm;background:#f8fafc;text-align:center;color:#94a3b8;font-size:8pt">&#x25A6; พื้นที่แสดงเนื้อหาตามเมนูที่เลือก (Main Content Area)</div>
+      </div>
+    </div>
+    <div class="info-box teal">
+      <h4 style="color:#0f766e">&#x26A1; ข้อแนะนำการใช้งาน</h4>
+      <div class="grid-2" style="gap:2mm;margin-top:2mm;font-size:8pt;color:#334155">
+        <div>&#x1F4F6; ต้องมีการเชื่อมต่ออินเทอร์เน็ตตลอดการใช้งาน</div>
+        <div>&#x1F504; กดรีเฟรชเพื่อดึงข้อมูลล่าสุดได้ทุกเมนู</div>
+        <div>&#x1F5A8;&#xFE0F; ต้องเชื่อม Thermal Printer ก่อนพิมพ์สติ๊กเกอร์</div>
+        <div>&#x1F4F1; รองรับการสแกนบาร์โค้ดผ่านกล้องมือถือ</div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <div class="footer-text">คู่มือการใช้งาน Sterile STOCK &middot; หอผู้ป่วยพิเศษปาริฉัตร - หอสงฆ์อาพาธ &middot; รพร.สว่างแดนดิน</div>
+    <div class="footer-badge">หน้า 2</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 3: DASHBOARD ===== -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand"><img src="./icon.png" alt="icon" class="brand-icon"><div><div class="brand-name">Sterile STOCK</div><div class="brand-sub">Enterprise Inventory System</div></div></div>
+    <div class="page-label"><div>บทที่ 3</div><div class="page-num">หน้า 3 / 7</div></div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">
+      <div class="section-icon" style="background:linear-gradient(135deg,#0f766e,#0ea5e9)">&#x1F3E0;</div>
+      <div><h2>แดชบอร์ดหลัก</h2><div class="sub">Dashboard Overview &middot; ภาพรวมคลังและสถานะวัสดุปราศจากเชื้อ</div></div>
+    </div>
+    <div class="screenshot-frame" style="margin-bottom:5mm">
+      <img src="./.manual-assets/dashboard.png" alt="Dashboard">
+      <div class="screenshot-caption">&#x25B2; หน้าแดชบอร์ดหลัก แสดงการ์ดสรุปสถานะ 6 ระดับ และตารางรายการคงคลังทั้งหมด</div>
+    </div>
+    <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F3A8; คำอธิบายสถานะสี 6 ระดับ</div>
+    <div class="card" style="margin-bottom:4mm">
+      <table class="status-table">
+        <tr>
+          <td style="width:30%"><span class="status-dot dot-green">&#x25CF; ปกติ (Normal)</span></td>
+          <td style="font-size:8.5pt;color:#334155"><strong>วันหมดอายุ &ge; 4 วัน</strong> &mdash; วัสดุยังอยู่ในช่วงใช้งานได้ปกติ ไม่ต้องดำเนินการใดๆ</td>
+          <td style="width:15%;text-align:right"><span class="pill" style="background:#dcfce7;color:#15803d">&#x2713; ใช้งานได้</span></td>
+        </tr>
+        <tr>
+          <td><span class="status-dot dot-amber3">&#x25CF; ใกล้หมด 3 วัน</span></td>
+          <td style="font-size:8.5pt;color:#334155"><strong>เหลือ 3 วันก่อนหมดอายุ</strong> &mdash; ควรเตรียมส่งนึ่งใหม่หรือจัดการล่วงหน้า</td>
+          <td style="text-align:right"><span class="pill" style="background:#fef9c3;color:#a16207">&#x26A0; เฝ้าระวัง</span></td>
+        </tr>
+        <tr>
+          <td><span class="status-dot dot-amber2">&#x25CF; ใกล้หมด 2 วัน</span></td>
+          <td style="font-size:8.5pt;color:#334155"><strong>เหลือ 2 วันก่อนหมดอายุ</strong> &mdash; ควรดำเนินการโดยเร็ว ตรวจสอบการใช้งาน</td>
+          <td style="text-align:right"><span class="pill" style="background:#fef3c7;color:#92400e">&#x26A0; เร่งด่วน</span></td>
+        </tr>
+        <tr>
+          <td><span class="status-dot dot-amber1">&#x25CF; ใกล้หมด 1 วัน</span></td>
+          <td style="font-size:8.5pt;color:#334155"><strong>เหลือ 1 วันก่อนหมดอายุ</strong> &mdash; ต้องดำเนินการวันนี้ แจ้งผู้รับผิดชอบทันที</td>
+          <td style="text-align:right"><span class="pill" style="background:#ffedd5;color:#c2410c">&#x1F534; วิกฤต</span></td>
+        </tr>
+        <tr>
+          <td><span class="status-dot dot-orange">&#x25CF; หมดอายุวันนี้</span></td>
+          <td style="font-size:8.5pt;color:#334155"><strong>วันนี้เป็นวันสุดท้าย</strong> &mdash; ห้ามใช้งาน ดำเนินการตัดออกหรือส่งนึ่งใหม่ทันที</td>
+          <td style="text-align:right"><span class="pill" style="background:#ffedd5;color:#c2410c">&#x1F6AB; หยุดใช้</span></td>
+        </tr>
+        <tr>
+          <td><span class="status-dot dot-red">&#x25CF; หมดอายุแล้ว</span></td>
+          <td style="font-size:8.5pt;color:#334155"><strong>เลยวันหมดอายุ</strong> &mdash; ห้ามใช้งานเด็ดขาด ตัดจำหน่ายหรือ Re-Sterile</td>
+          <td style="text-align:right"><span class="pill" style="background:#fee2e2;color:#b91c1c">&#x274C; หมดอายุ</span></td>
+        </tr>
+      </table>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F6E0;&#xFE0F; ฟังก์ชันในแดชบอร์ด</div>
+    <div class="grid-2" style="gap:4mm">
+      <div>
+        <div class="card" style="padding:3.5mm;margin-bottom:3mm">
+          <div style="font-weight:700;font-size:9pt;color:#0f766e;margin-bottom:2mm">&#x1F50D; การค้นหาและกรองข้อมูล</div>
+          <ul style="font-size:8pt;color:#334155;padding-left:1.2em;line-height:1.9">
+            <li>ค้นหาด้วย ItemCode หรือชื่อรายการ (พิมพ์ทันที)</li>
+            <li>กรองตามสถานะ: ปกติ / ใกล้หมดอายุ / หมดอายุ</li>
+            <li>กรองตามวันที่รับเข้า</li>
+            <li>กด รีเฟรช เพื่อดึงข้อมูลล่าสุด</li>
+          </ul>
+        </div>
+        <div class="card" style="padding:3.5mm">
+          <div style="font-weight:700;font-size:9pt;color:#0f766e;margin-bottom:2mm">&#x1F5A8;&#xFE0F; การพิมพ์สติ๊กเกอร์จากตาราง</div>
+          <ul style="font-size:8pt;color:#334155;padding-left:1.2em;line-height:1.9">
+            <li>ติ๊กถูก Checkbox หน้ารายการที่ต้องการ</li>
+            <li>คลิก &ldquo;พิมพ์ที่เลือก&rdquo; ด้านบนตาราง</li>
+            <li>หรือคลิก &ldquo;พิมพ์ย้อนหลัง&rdquo; ในแถวรายการ</li>
+            <li>สามารถเลือกทั้งหมดด้วย Checkbox หัวตาราง</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="padding:3.5mm;margin-bottom:3mm">
+          <div style="font-weight:700;font-size:9pt;color:#b91c1c;margin-bottom:2mm">&#x26A1; การตัดจ่ายจากแดชบอร์ด</div>
+          <ul style="font-size:8pt;color:#334155;padding-left:1.2em;line-height:1.9">
+            <li>กดปุ่ม <span class="pill" style="background:#0f766e;color:white">ตัดจ่าย</span> ในแถวรายการ</li>
+            <li>ระบบนำไปหน้าจ่ายออกพร้อมข้อมูลอัตโนมัติ</li>
+            <li>ระบุจำนวนและประเภทการจ่าย แล้วบันทึก</li>
+          </ul>
+        </div>
+        <div class="card card-teal" style="padding:3.5mm">
+          <div style="font-weight:700;font-size:9pt;color:#0f766e;margin-bottom:2mm">&#x1F4CA; การ์ดสรุปด้านบน</div>
+          <div class="grid-2" style="gap:2mm">
+            <div style="background:white;border-radius:7px;padding:2mm 3mm;font-size:8pt"><div style="font-weight:700;color:#0f766e;font-size:12pt">35</div><div style="color:#64748b;font-size:7.5pt">คงคลังปกติ</div></div>
+            <div style="background:white;border-radius:7px;padding:2mm 3mm;font-size:8pt"><div style="font-weight:700;color:#c2410c;font-size:12pt">2</div><div style="color:#64748b;font-size:7.5pt">หมดอายุวันนี้</div></div>
+            <div style="background:white;border-radius:7px;padding:2mm 3mm;font-size:8pt"><div style="font-weight:700;color:#a16207;font-size:12pt">6</div><div style="color:#64748b;font-size:7.5pt">ใกล้หมด 3 วัน</div></div>
+            <div style="background:white;border-radius:7px;padding:2mm 3mm;font-size:8pt"><div style="font-weight:700;color:#b91c1c;font-size:12pt">1</div><div style="color:#64748b;font-size:7.5pt">หมดอายุแล้ว</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <div class="footer-text">คู่มือการใช้งาน Sterile STOCK &middot; หอผู้ป่วยพิเศษปาริฉัตร - หอสงฆ์อาพาธ &middot; รพร.สว่างแดนดิน</div>
+    <div class="footer-badge">หน้า 3</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 4: RECEIVE ===== -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand"><img src="./icon.png" alt="icon" class="brand-icon"><div><div class="brand-name">Sterile STOCK</div><div class="brand-sub">Enterprise Inventory System</div></div></div>
+    <div class="page-label"><div>บทที่ 4</div><div class="page-num">หน้า 4 / 7</div></div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">
+      <div class="section-icon" style="background:linear-gradient(135deg,#0284c7,#38bdf8)">&#x1F4E5;</div>
+      <div><h2>ระบบรับเข้า &amp; พิมพ์สติ๊กเกอร์</h2><div class="sub">Receive System &middot; บันทึก Stock และพิมพ์ Thermal Label อัตโนมัติ</div></div>
+    </div>
+    <div class="screenshot-frame" style="margin-bottom:5mm">
+      <img src="./.manual-assets/receive.png" alt="Receive">
+      <div class="screenshot-caption">&#x25B2; หน้าระบบรับเข้า &mdash; กรอกข้อมูลวัสดุและดูตัวอย่างสติ๊กเกอร์ก่อนพิมพ์ได้ทันที</div>
+    </div>
+    <div class="grid-2" style="gap:5mm">
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4CB; ขั้นตอนการรับเข้า</div>
+        <ul class="steps">
+          <li class="step-item"><div class="step-num sky">1</div><div class="step-content"><strong>คลิกเมนู &ldquo;รับเข้า&rdquo;</strong><p>ระบบสร้าง ItemCode อัตโนมัติ (STK-YYYYMMDD-XXXX)</p></div></li>
+          <li class="step-item"><div class="step-num sky">2</div><div class="step-content"><strong>เลือกชื่อรายการ</strong><p>พิมพ์คำค้นหาในช่อง &ldquo;ชื่อรายการ&rdquo; แล้วเลือกจากรายการแนะนำ</p></div></li>
+          <li class="step-item"><div class="step-num sky">3</div><div class="step-content"><strong>กรอกข้อมูลวันที่</strong><p>วันที่รับเข้า &middot; วันที่นึ่ง (Sterile Date) &middot; วันที่หมดอายุ</p></div></li>
+          <li class="step-item"><div class="step-num sky">4</div><div class="step-content"><strong>ระบุจำนวนรับ</strong><p>กรอกจำนวนชิ้นที่รับเข้าคลัง ระบบจะพิมพ์ตามจำนวนนี้</p></div></li>
+          <li class="step-item"><div class="step-num sky">5</div><div class="step-content"><strong>ตรวจสอบตัวอย่างก่อนพิมพ์</strong><p>ดูตัวอย่างสติ๊กเกอร์ในกรอบ &ldquo;ตัวอย่างก่อนพิมพ์&rdquo; ทางขวามือ</p></div></li>
+          <li class="step-item"><div class="step-num sky">6</div><div class="step-content"><strong>กด &ldquo;บันทึกและพิมพ์สติ๊กเกอร์&rdquo;</strong><p>บันทึกข้อมูลและเปิดหน้าต่างพิมพ์ Thermal Printer (2&times;1 นิ้ว) ทันที</p></div></li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F3F7;&#xFE0F; รูปแบบสติ๊กเกอร์ Thermal (2&times;1 นิ้ว)</div>
+        <div style="border:1.5px dashed #94a3b8;border-radius:8px;padding:4mm;background:#f8fafc;max-width:75mm;margin:0 auto 4mm;font-size:8pt">
+          <div style="text-align:center;margin-bottom:2mm">
+            <div style="display:flex;justify-content:center;gap:1px;height:12mm;align-items:flex-end;margin-bottom:1.5mm">
+              <div style="width:1px;height:100%;background:#000"></div><div style="width:3px;height:100%;background:#000"></div>
+              <div style="width:1px;height:80%;background:#000"></div><div style="width:2px;height:100%;background:#000"></div>
+              <div style="width:2px;height:60%;background:#000"></div><div style="width:3px;height:100%;background:#000"></div>
+              <div style="width:1px;height:90%;background:#000"></div><div style="width:1px;height:100%;background:#000"></div>
+              <div style="width:2px;height:70%;background:#000"></div><div style="width:1px;height:100%;background:#000"></div>
+              <div style="width:3px;height:85%;background:#000"></div><div style="width:1px;height:100%;background:#000"></div>
+              <div style="width:1px;height:100%;background:#000"></div><div style="width:2px;height:75%;background:#000"></div>
+              <div style="width:1px;height:100%;background:#000"></div><div style="width:3px;height:90%;background:#000"></div>
+              <div style="width:1px;height:80%;background:#000"></div><div style="width:2px;height:100%;background:#000"></div>
+            </div>
+            <div style="font-family:monospace;font-size:7pt;color:#000">STK-20260829-0001</div>
+          </div>
+          <div style="border-top:1px solid #e2e8f0;padding-top:1.5mm">
+            <div style="font-weight:700;font-size:9pt;color:#000">Set Dressing</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1mm;margin-top:1mm">
+              <div><span style="color:#64748b">รับเข้า:</span> 29 ส.ค. 69</div>
+              <div><span style="color:#64748b">นึ่ง:</span> 29 ส.ค. 69</div>
+              <div><span style="color:#64748b">หมดอายุ:</span> 28 ก.ย. 69</div>
+              <div><span style="color:#64748b">จำนวน:</span> 12</div>
+            </div>
+          </div>
+        </div>
+        <div class="info-box sky">
+          <h4 style="color:#0284c7">&#x1F4CC; ข้อมูลบนสติ๊กเกอร์</h4>
+          <ul style="font-size:8pt;line-height:1.9;padding-left:1.2em">
+            <li><strong>Barcode/QR Code</strong> &mdash; สแกนเพื่อตัดจ่ายได้ทันที</li>
+            <li><strong>ItemCode</strong> &mdash; รหัสเฉพาะของรายการนั้น</li>
+            <li><strong>ชื่อรายการ</strong> &mdash; ชื่อวัสดุ/เครื่องมือ</li>
+            <li><strong>วันที่รับ / นึ่ง / หมดอายุ</strong></li>
+            <li><strong>จำนวน</strong> &mdash; จำนวนที่รับเข้า</li>
+          </ul>
+        </div>
+        <div class="info-box teal" style="margin-top:3mm">
+          <h4 style="color:#0f766e">&#x1F5A8;&#xFE0F; การพิมพ์ย้อนหลัง</h4>
+          <p style="font-size:8pt">หากต้องการพิมพ์ซ้ำ ให้กลับไปที่แดชบอร์ด &rarr; ค้นหารายการ &rarr; คลิก &ldquo;พิมพ์ย้อนหลัง&rdquo; หรือติ๊ก Checkbox แล้วกด &ldquo;พิมพ์ที่เลือก&rdquo;</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <div class="footer-text">คู่มือการใช้งาน Sterile STOCK &middot; หอผู้ป่วยพิเศษปาริฉัตร - หอสงฆ์อาพาธ &middot; รพร.สว่างแดนดิน</div>
+    <div class="footer-badge">หน้า 4</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 5: DISPATCH ===== -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand"><img src="./icon.png" alt="icon" class="brand-icon"><div><div class="brand-name">Sterile STOCK</div><div class="brand-sub">Enterprise Inventory System</div></div></div>
+    <div class="page-label"><div>บทที่ 5</div><div class="page-num">หน้า 5 / 7</div></div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">
+      <div class="section-icon" style="background:linear-gradient(135deg,#dc2626,#ef4444)">&#x1F4E4;</div>
+      <div><h2>ระบบจ่ายออก</h2><div class="sub">Dispatch System &middot; ค้นหาด้วยชื่อ, บาร์โค้ด หรือกล้องสแกน QR Code</div></div>
+    </div>
+    <div class="screenshot-frame" style="margin-bottom:5mm">
+      <img src="./.manual-assets/dispatch.png" alt="Dispatch">
+      <div class="screenshot-caption">&#x25B2; หน้าระบบจ่ายออก &mdash; ค้นหารายการจากชื่อหรือ ItemCode แล้วกรอกจำนวนและประเภทการจ่าย</div>
+    </div>
+    <div class="grid-2" style="gap:5mm">
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4CB; ขั้นตอนการจ่ายออก</div>
+        <ul class="steps">
+          <li class="step-item"><div class="step-num red">1</div><div class="step-content"><strong>คลิกเมนู &ldquo;จ่ายออก&rdquo;</strong><p>หรือกดปุ่ม &ldquo;ตัดจ่าย&rdquo; ในแถวรายการจากแดชบอร์ด</p></div></li>
+          <li class="step-item"><div class="step-num red">2</div><div class="step-content"><strong>ค้นหารายการ</strong><p>พิมพ์ชื่อ / ItemCode ในช่องค้นหา แล้วกด &ldquo;ค้นหา&rdquo; หรือ Enter</p></div></li>
+          <li class="step-item"><div class="step-num red">3</div><div class="step-content"><strong>เลือกสแกน Barcode/QR (ทางเลือก)</strong><p>กด &ldquo;เปิดกล้องสแกน&rdquo; &rarr; ส่องกล้องที่สติ๊กเกอร์ &rarr; ค้นหาอัตโนมัติ</p></div></li>
+          <li class="step-item"><div class="step-num red">4</div><div class="step-content"><strong>คลิกเลือกรายการ</strong><p>จากผลการค้นหาที่แสดง ดูสถานะและจำนวนคงเหลือก่อนเลือก</p></div></li>
+          <li class="step-item"><div class="step-num red">5</div><div class="step-content"><strong>กรอกข้อมูลการจ่าย</strong><p>วันที่จ่ายออก &middot; จำนวน &middot; ประเภทการจ่าย &middot; หมายเหตุ</p></div></li>
+          <li class="step-item"><div class="step-num red">6</div><div class="step-content"><strong>กด &ldquo;บันทึกการจ่ายออก&rdquo;</strong><p>ระบบหักสต็อกและบันทึกลงฐานข้อมูล แสดงผลยืนยันทันที</p></div></li>
+        </ul>
+      </div>
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4CB; ประเภทการจ่ายออก</div>
+        <div class="card" style="margin-bottom:4mm">
+          <table class="doc-table">
+            <thead><tr><th>ประเภท</th><th>ความหมาย</th></tr></thead>
+            <tbody>
+              <tr><td><span class="pill pill-teal">ใช้งาน</span></td><td>จ่ายให้ผู้ป่วยหรือใช้ในหอผู้ป่วยโดยตรง</td></tr>
+              <tr><td><span class="pill pill-sky">หมุนเวียนตึกอื่น</span></td><td>ส่งไปยังหน่วยงานอื่นภายในโรงพยาบาล</td></tr>
+              <tr><td><span class="pill" style="background:#f3e8ff;color:#7c3aed">ส่ง Re-Sterile</span></td><td>ส่งกลับไปนึ่งใหม่ที่ศูนย์ CSSD</td></tr>
+              <tr><td><span class="pill pill-red">ใช้แล้วไม่ตัดจ่าย</span></td><td>บันทึกรายการที่ใช้ไปโดยยังไม่ได้ตัด</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4F1; วิธีสแกนด้วยกล้องมือถือ</div>
+        <ul class="steps" style="gap:2.5mm;margin-bottom:4mm">
+          <li class="step-item"><div class="step-num" style="background:#6d28d9">1</div><div class="step-content"><strong>กด &ldquo;เปิดกล้องสแกน&rdquo;</strong><p>ปุ่มมุมขวาบนของหน้าจ่ายออก</p></div></li>
+          <li class="step-item"><div class="step-num" style="background:#6d28d9">2</div><div class="step-content"><strong>อนุญาตใช้กล้อง</strong><p>กด Allow เมื่อเบราว์เซอร์ขอสิทธิ์</p></div></li>
+          <li class="step-item"><div class="step-num" style="background:#6d28d9">3</div><div class="step-content"><strong>ส่องกล้องที่บาร์โค้ด</strong><p>ระบบค้นหาและแสดงรายการอัตโนมัติเมื่อสแกนสำเร็จ</p></div></li>
+        </ul>
+        <div class="info-box teal">
+          <h4 style="color:#0f766e">&#x26A0;&#xFE0F; ข้อควรระวัง</h4>
+          <p style="font-size:8pt">ตรวจสอบจำนวนคงเหลือในช่อง &ldquo;จำนวนจ่ายออก&rdquo; ให้ไม่เกินจำนวนที่มีในคลัง ระบบจะแจ้งเตือนหากจำนวนเกิน</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <div class="footer-text">คู่มือการใช้งาน Sterile STOCK &middot; หอผู้ป่วยพิเศษปาริฉัตร - หอสงฆ์อาพาธ &middot; รพร.สว่างแดนดิน</div>
+    <div class="footer-badge">หน้า 5</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 6: LINE ALERT ===== -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand"><img src="./icon.png" alt="icon" class="brand-icon"><div><div class="brand-name">Sterile STOCK</div><div class="brand-sub">Enterprise Inventory System</div></div></div>
+    <div class="page-label"><div>บทที่ 6</div><div class="page-num">หน้า 6 / 7</div></div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">
+      <div class="section-icon" style="background:linear-gradient(135deg,#16a34a,#22c55e)">&#x1F4AC;</div>
+      <div><h2>ระบบแจ้งเตือน LINE</h2><div class="sub">LINE Notification &middot; แจ้งเตือนอัตโนมัติทุกเช้าเมื่อวัสดุใกล้หมดอายุ</div></div>
+    </div>
+    <div class="grid-2" style="gap:6mm">
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4F1; ตัวอย่างข้อความแจ้งเตือน LINE</div>
+        <div class="screenshot-frame" style="max-width:75mm;margin:0 auto 4mm">
+          <img src="./.manual-assets/line.png" alt="LINE Notification">
+          <div class="screenshot-caption">&#x25B2; ตัวอย่างข้อความแจ้งเตือนจาก LINE Bot &ldquo;PARICHAT&rdquo;</div>
+        </div>
+        <div class="info-box teal">
+          <h4 style="color:#0f766e">&#x1F4CB; ข้อมูลในข้อความ LINE</h4>
+          <ul style="font-size:8pt;line-height:1.9;padding-left:1.2em">
+            <li><strong>วันที่และเวลา</strong> ที่ส่งการแจ้งเตือน</li>
+            <li><strong>จำนวนรายการ</strong> ที่ใกล้หมดอายุทั้งหมด</li>
+            <li><strong>ชื่อวัสดุ</strong> และ <strong>รหัส ItemCode</strong></li>
+            <li><strong>จำนวนคงเหลือ</strong> ณ เวลานั้น</li>
+            <li><strong>จำนวนวันที่เหลือ</strong> ก่อนหมดอายุ (1&ndash;3 วัน)</li>
+            <li><strong>ปุ่มลิงก์</strong> &ldquo;กดเข้าลิงก์ตรวจสอบในระบบ&rdquo;</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x2699;&#xFE0F; การทำงานของระบบแจ้งเตือน</div>
+        <div class="card card-teal" style="padding:4mm;margin-bottom:4mm">
+          <div style="font-weight:700;font-size:9pt;color:#0f766e;margin-bottom:3mm">&#x1F557; ตารางเวลาส่งแจ้งเตือน</div>
+          <div style="display:flex;flex-direction:column;gap:2mm">
+            <div style="background:white;border-radius:8px;padding:2.5mm 3mm;display:flex;align-items:center;justify-content:space-between;font-size:8.5pt">
+              <div><span style="font-size:12pt">&#x1F305;</span> <strong>แจ้งเตือนทุกเช้า</strong></div>
+              <span class="pill" style="background:#0f766e;color:white;font-size:7.5pt">08:00&ndash;09:00 น.</span>
+            </div>
+            <div style="background:white;border-radius:8px;padding:2.5mm 3mm;font-size:8.5pt">
+              <div style="font-weight:700;color:#0f766e;margin-bottom:1mm">เงื่อนไขการแจ้งเตือน</div>
+              <div class="grid-2" style="gap:1.5mm;font-size:7.5pt;color:#334155">
+                <div>&#x25CF; <span style="color:#a16207">ใกล้หมด 3 วัน</span></div>
+                <div>&#x25CF; <span style="color:#c2410c">ใกล้หมด 2 วัน</span></div>
+                <div>&#x25CF; <span style="color:#ea580c">ใกล้หมด 1 วัน</span></div>
+                <div>&#x25CF; <span style="color:#b91c1c">หมดอายุแล้ว</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F504; กระบวนการทำงาน</div>
+        <div style="display:flex;flex-direction:column;gap:2.5mm">
+          <div style="display:flex;align-items:flex-start;gap:8px;background:#f0fdfa;border-radius:8px;padding:3mm">
+            <div style="background:#0f766e;color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0">1</div>
+            <div style="font-size:8pt"><strong>Google Apps Script (GAS)</strong> ตรวจสอบ Google Sheets ทุกเช้า</div>
+          </div>
+          <div style="text-align:center;color:#94a3b8;font-size:12pt">&darr;</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;background:#f0fdfa;border-radius:8px;padding:3mm">
+            <div style="background:#0d9488;color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0">2</div>
+            <div style="font-size:8pt"><strong>ค้นหารายการ</strong> ที่วันหมดอายุเหลือน้อยกว่าหรือเท่ากับ 3 วัน</div>
+          </div>
+          <div style="text-align:center;color:#94a3b8;font-size:12pt">&darr;</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;background:#f0fdfa;border-radius:8px;padding:3mm">
+            <div style="background:#0ea5e9;color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0">3</div>
+            <div style="font-size:8pt"><strong>สร้างข้อความ Flex Message</strong> แสดงรายละเอียดแต่ละรายการ</div>
+          </div>
+          <div style="text-align:center;color:#94a3b8;font-size:12pt">&darr;</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;background:#f0fdfa;border-radius:8px;padding:3mm">
+            <div style="background:#16a34a;color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0">4</div>
+            <div style="font-size:8pt"><strong>ส่งผ่าน LINE Messaging API</strong> ไปยัง Group &ldquo;PARICHAT&rdquo;</div>
+          </div>
+        </div>
+        <div class="info-box amber" style="margin-top:3mm">
+          <h4 style="color:#92400e">&#x1F4A1; การดำเนินการหลังได้รับแจ้งเตือน</h4>
+          <ul style="font-size:8pt;line-height:1.9;padding-left:1.2em">
+            <li>กดลิงก์ในข้อความ LINE เพื่อเปิดระบบ</li>
+            <li>ค้นหารายการในแดชบอร์ดด้วย ItemCode</li>
+            <li>ตัดสินใจ: ใช้งาน / ส่งนึ่งใหม่ / ตัดจำหน่าย</li>
+            <li>บันทึกการจ่ายออกในระบบทันที</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <div class="footer-text">คู่มือการใช้งาน Sterile STOCK &middot; หอผู้ป่วยพิเศษปาริฉัตร - หอสงฆ์อาพาธ &middot; รพร.สว่างแดนดิน</div>
+    <div class="footer-badge">หน้า 6</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 7: REPORTS ===== -->
+<div class="page">
+  <div class="page-header">
+    <div class="brand"><img src="./icon.png" alt="icon" class="brand-icon"><div><div class="brand-name">Sterile STOCK</div><div class="brand-sub">Enterprise Inventory System</div></div></div>
+    <div class="page-label"><div>บทที่ 7</div><div class="page-num">หน้า 7 / 7</div></div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">
+      <div class="section-icon" style="background:linear-gradient(135deg,#334155,#64748b)">&#x1F4CA;</div>
+      <div><h2>รายงานสรุปเชิงสถิติ</h2><div class="sub">Summary Analytics &middot; วิเคราะห์ตามปีงบประมาณ พร้อม Export และ Print</div></div>
+    </div>
+    <div class="screenshot-frame" style="margin-bottom:5mm">
+      <img src="./.manual-assets/reports.png" alt="Reports">
+      <div class="screenshot-caption">&#x25B2; หน้ารายงานสรุป &mdash; แสดงกราฟแท่ง เส้น และวงกลม พร้อมตารางรายละเอียดรายการ</div>
+    </div>
+    <div class="grid-2" style="gap:5mm">
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4C8; ข้อมูลสถิติที่แสดง</div>
+        <div class="card" style="padding:4mm;margin-bottom:3mm">
+          <div style="font-size:9pt;font-weight:700;color:#0f766e;margin-bottom:3mm">&#x1F522; การ์ดสรุป 4 ประเภท</div>
+          <div class="grid-2" style="gap:2.5mm">
+            <div class="metric-mini"><div class="m-label">Re-Sterile</div><div class="m-value" style="color:#0ea5e9">18</div><div style="font-size:7pt;color:#64748b;margin-top:1mm">ส่งนึ่งใหม่ (22.5%)</div></div>
+            <div class="metric-mini"><div class="m-label">หมุนเวียนตึกอื่น</div><div class="m-value" style="color:#16a34a">9</div><div style="font-size:7pt;color:#64748b;margin-top:1mm">ส่งตึกอื่น (11.3%)</div></div>
+            <div class="metric-mini"><div class="m-label">หมดอายุ</div><div class="m-value" style="color:#ef4444">4</div><div style="font-size:7pt;color:#64748b;margin-top:1mm">ของหมดอายุ</div></div>
+            <div class="metric-mini"><div class="m-label">สูญเสีย</div><div class="m-value" style="color:#f59e0b">1</div><div style="font-size:7pt;color:#64748b;margin-top:1mm">รายการสูญเสีย</div></div>
+          </div>
+        </div>
+        <div class="card" style="padding:4mm">
+          <div style="font-size:9pt;font-weight:700;color:#0f766e;margin-bottom:3mm">&#x1F4C9; กราฟวิเคราะห์ 3 ประเภท</div>
+          <div style="display:flex;flex-direction:column;gap:2.5mm">
+            <div style="display:flex;align-items:center;gap:8px;font-size:8.5pt"><div style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#0f766e,#0ea5e9);flex-shrink:0"></div><div><strong>กราฟแท่ง (Bar)</strong><div style="color:#64748b;font-size:8pt">เปรียบเทียบการจ่ายออกตามประเภทรายเดือน</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:8.5pt"><div style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#0ea5e9,#38bdf8);flex-shrink:0"></div><div><strong>กราฟเส้น (Line)</strong><div style="color:#64748b;font-size:8pt">แนวโน้มจำนวนการจ่ายตลอดปีงบประมาณ</div></div></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:8.5pt"><div style="width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);flex-shrink:0"></div><div><strong>กราฟวงกลม (Donut)</strong><div style="color:#64748b;font-size:8pt">สัดส่วนการจ่ายออกแยกตามประเภท</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x2699;&#xFE0F; การใช้งานหน้ารายงาน</div>
+        <ul class="steps" style="margin-bottom:4mm">
+          <li class="step-item"><div class="step-num teal">1</div><div class="step-content"><strong>เลือกปีงบประมาณ</strong><p>Dropdown &ldquo;FY XXXX&rdquo; (ต.ค. &rarr; ก.ย.) รองรับหลายปีงบประมาณ</p></div></li>
+          <li class="step-item"><div class="step-num teal">2</div><div class="step-content"><strong>เลือกเดือน (ไม่บังคับ)</strong><p>เลือก &ldquo;ทุกเดือน&rdquo; หรือระบุเดือนที่ต้องการดูรายละเอียด</p></div></li>
+          <li class="step-item"><div class="step-num teal">3</div><div class="step-content"><strong>ดูกราฟและตารางรายละเอียด</strong><p>ข้อมูลอัปเดตอัตโนมัติตามช่วงเวลาที่เลือก</p></div></li>
+          <li class="step-item"><div class="step-num teal">4</div><div class="step-content"><strong>Export หรือพิมพ์รายงาน</strong><p>เลือก Excel / Print / PDF ตามต้องการ</p></div></li>
+        </ul>
+        <div style="font-size:9.5pt;font-weight:700;color:#0f172a;margin-bottom:3mm">&#x1F4E4; ตัวเลือก Export</div>
+        <div style="display:flex;flex-direction:column;gap:2mm;margin-bottom:4mm">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border-radius:8px;padding:2.5mm 3.5mm;border:1px solid #bbf7d0">
+            <div style="display:flex;align-items:center;gap:6px;font-size:8.5pt"><span>&#x1F4CA;</span><div><strong>Excel (.csv)</strong><div style="font-size:7.5pt;color:#64748b">ดาวน์โหลดข้อมูลเพื่อวิเคราะห์เพิ่มเติม</div></div></div>
+            <span class="pill" style="background:#bbf7d0;color:#15803d">Download</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f0f9ff;border-radius:8px;padding:2.5mm 3.5mm;border:1px solid #bae6fd">
+            <div style="display:flex;align-items:center;gap:6px;font-size:8.5pt"><span>&#x1F5A8;&#xFE0F;</span><div><strong>Print</strong><div style="font-size:7.5pt;color:#64748b">พิมพ์รายงานผ่านเครื่องพิมพ์ปกติ (A4)</div></div></div>
+            <span class="pill" style="background:#bae6fd;color:#0284c7">Print</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdfa;border-radius:8px;padding:2.5mm 3.5mm;border:1px solid #99f6e4">
+            <div style="display:flex;align-items:center;gap:6px;font-size:8.5pt"><span>&#x1F4C4;</span><div><strong>PDF</strong><div style="font-size:7.5pt;color:#64748b">บันทึกเป็นไฟล์ PDF พร้อมกราฟ</div></div></div>
+            <span class="pill" style="background:#0f766e;color:white">PDF</span>
+          </div>
+        </div>
+        <div class="info-box sky">
+          <h4 style="color:#0284c7">&#x1F4C5; ปีงบประมาณไทย</h4>
+          <p style="font-size:8pt">ระบบนับปีงบประมาณแบบไทย เริ่มต้น <strong>1 ตุลาคม</strong> และสิ้นสุด <strong>30 กันยายน</strong> ของปีถัดไป เช่น FY 2568 = ต.ค. 67 &ndash; ก.ย. 68</p>
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="card card-teal" style="padding:4mm;margin-top:2mm">
+      <div style="display:grid;grid-template-columns:1.2fr 1fr auto;gap:4mm;align-items:center">
+        <div>
+          <div style="font-size:9pt;font-weight:700;color:#0f766e;margin-bottom:2mm">&#x1F4DE; ติดต่อผู้พัฒนาระบบ</div>
+          <div style="font-size:8pt;color:#334155;line-height:1.9">
+            <div>&#x1F3E5; งานการพยาบาล หอผู้ป่วยพิเศษปาริฉัตร</div>
+            <div>&#x1F3E5; โรงพยาบาลสมเด็จพระยุพราชสว่างแดนดิน</div>
+            <div>&#x1F4CB; พัฒนาบน Google Apps Script + Sheets</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9pt;font-weight:700;color:#0f766e;margin-bottom:2mm">&#x1F4DD; ข้อมูลเอกสาร &amp; เว็บไซต์</div>
+          <table style="font-size:8pt;width:100%;border-collapse:collapse">
+            <tr><td style="color:#64748b;padding:1mm 0">เวอร์ชัน:</td><td style="font-weight:600">1.0 (ส.ค. 2569)</td></tr>
+            <tr><td style="color:#64748b;padding:1mm 0">URL:</td><td style="font-weight:700;font-size:7.5pt;font-family:monospace;color:#0f766e"><a href="https://swdcph-nurse.github.io/Sterile-Stock/" target="_blank" style="color:#0f766e;text-decoration:underline">swdcph-nurse.github.io/Sterile-Stock/</a></td></tr>
+            <tr><td style="color:#64748b;padding:1mm 0">Platform:</td><td style="font-weight:600">Web + PWA (รองรับมือถือ)</td></tr>
+          </table>
+        </div>
+        <div style="text-align:center;background:white;border-radius:10px;padding:2.5mm;border:1px solid #ccfbf1;box-shadow:0 2px 6px rgba(15,118,110,0.08)">
+          <img src="./.manual-assets/app-qrcode.png" alt="QR Code" style="width:52px;height:52px;display:block">
+          <div style="font-size:6.5pt;font-weight:700;color:#0f766e;margin-top:1mm">&#x1F4F1; สแกนเข้าเว็บ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <div class="footer-text">คู่มือการใช้งาน Sterile STOCK &middot; หอผู้ป่วยพิเศษปาริฉัตร - หอสงฆ์อาพาธ &middot; รพร.สว่างแดนดิน</div>
+    <div class="footer-badge">หน้า 7</div>
+  </div>
+</div>
+
+</body>
+</html>
