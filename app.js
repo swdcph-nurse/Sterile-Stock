@@ -1437,22 +1437,30 @@ async function apiCall(method, payload = {}) {
     const result = await response.json().catch(() => ({}));
 
     if (!response.ok || result.ok === false) {
-      // แก้ไขจุดนี้ให้ดึงข้อความจาก Error Object ได้อย่างปลอดภัย
+      // ดึงข้อความ Error ออกมาจากทุกรูปแบบที่เป็นไปได้
       let errorMsg = 'เกิดข้อผิดพลาดจาก API';
-      if (result.error) {
-        errorMsg = typeof result.error === 'object' ? JSON.stringify(result.error) : result.error;
+      const errObj = result.error || result.message;
+      
+      if (errObj) {
+        if (typeof errObj === 'string') {
+          errorMsg = errObj;
+        } else if (typeof errObj === 'object') {
+          errorMsg = errObj.message || errObj.error || JSON.stringify(errObj);
+        }
       } else if (typeof result === 'string') {
         errorMsg = result;
       }
+      
       throw new Error(errorMsg);
     }
     
     return result && result.data !== undefined ? result.data : result;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('API Error Detail:', error);
     throw error;
   }
-}
+} 
+
 /** Extracts a human readable error message. */
 function getErrorMessage(error) {
   const raw = error && error.message ? error.message : String(error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
