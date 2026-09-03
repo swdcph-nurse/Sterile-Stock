@@ -1,5 +1,7 @@
 const DEFAULT_API_URL = 'https://vhluwljtzqakalkyciwk.supabase.co/functions/v1/sterile-api';
-const API_URL = (window.STERILE_API_URL || document.querySelector('meta[name="api-url"]')?.content || DEFAULT_API_URL).replace(/\/$/, '');const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const DEFAULT_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // ใส่ anon/public key จาก Project Settings > API (ห้ามใส่ service_role key)
+const API_URL = (window.STERILE_API_URL || document.querySelector('meta[name="api-url"]')?.content || DEFAULT_API_URL).replace(/\/$/, '');
+const ANON_KEY = window.STERILE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 const state = {
   bootstrap: null,
@@ -1427,6 +1429,8 @@ async function apiCall(method, payload = {}) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${ANON_KEY}`,
+        apikey: ANON_KEY
       },
       body: JSON.stringify({
         action: method,

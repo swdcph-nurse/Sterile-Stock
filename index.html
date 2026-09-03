@@ -14,6 +14,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script>
       tailwind = { config: { theme: { extend: { fontFamily: { sans: ['IBM Plex Sans Thai', 'sans-serif'] } } } } };
+      // 👉 ใส่ anon/public key จาก Supabase Dashboard > Project Settings > API
+      //    (ต้องเป็น "anon public" key เท่านั้น ห้ามใส่ service_role key เด็ดขาด)
+      window.STERILE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZobHV3bGp0enFha2Fsa3ljaXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzOTA4MjQsImV4cCI6MjEwMzk2NjgyNH0.lCY2Z1F63lsSeHgF_h1no4qR_-HYlYMhLEXRRf1nz88';
     </script>
     <link rel="stylesheet" href="./style.css">
     <link rel="stylesheet" href="./scanner.css">
