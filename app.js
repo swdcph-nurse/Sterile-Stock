@@ -1428,22 +1428,23 @@ async function apiCall(method, payload = {}) {
       headers: {
         'Content-Type': 'application/json',
       },
-      // ส่งข้อมูลในรูปแบบ JSON เหมือนที่ Edge Function คาดหวัง
       body: JSON.stringify({
         action: method,
         payload: payload
       })
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `การเชื่อมต่อผิดพลาด (Status: ${response.status})`);
-    }
+    const result = await response.json().catch(() => ({}));
 
-    const result = await response.json();
-    
-    if (result && result.ok === false) {
-      throw new Error(result.error || 'เกิดข้อผิดพลาดจาก API');
+    if (!response.ok || result.ok === false) {
+      // แก้ไขจุดนี้ให้ดึงข้อความจาก Error Object ได้อย่างปลอดภัย
+      let errorMsg = 'เกิดข้อผิดพลาดจาก API';
+      if (result.error) {
+        errorMsg = typeof result.error === 'object' ? JSON.stringify(result.error) : result.error;
+      } else if (typeof result === 'string') {
+        errorMsg = result;
+      }
+      throw new Error(errorMsg);
     }
     
     return result && result.data !== undefined ? result.data : result;
@@ -1452,7 +1453,6 @@ async function apiCall(method, payload = {}) {
     throw error;
   }
 }
-
 /** Extracts a human readable error message. */
 function getErrorMessage(error) {
   const raw = error && error.message ? error.message : String(error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
