@@ -1,6 +1,5 @@
-const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzVe1h0dW0kG0Z6HTalLljeRDswUptah7e1zxDXJ1KmK3Mzbfd1my4ZDYqBuFhRidkBrQ/exec';
-const GAS_API_URL = (window.STERILE_API_URL || document.querySelector('meta[name="gas-api-url"]')?.content || DEFAULT_GAS_API_URL).replace(/\/$/, '');
-const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const DEFAULT_API_URL = 'https://vhluwljtzqakalkyciwk.supabase.co/functions/v1/sterile-api';
+const API_URL = (window.STERILE_API_URL || document.querySelector('meta[name="api-url"]')?.content || DEFAULT_API_URL).replace(/\/$/, '');const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 const state = {
   bootstrap: null,
@@ -1417,60 +1416,41 @@ function modalWidthClass(size) {
   }
 }
 
-/** Wraps google.script.run into a Promise-based API. */
-function apiCall(method, payload = {}) {
-  const canUseGasRun = typeof google !== 'undefined' && google.script && google.script.run && window.location.hostname.includes('script.google.com');
-  if (canUseGasRun) {
-    return new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler((response) => {
-          if (response && response.ok === false) {
-            reject(new Error(response.error || 'เกิดข้อผิดพลาด'));
-            return;
-          }
-          resolve(response && response.data !== undefined ? response.data : response);
-        })
-        .withFailureHandler(reject)[method](payload);
-    });
+/** Calls the Supabase Edge Function API. */
+async function apiCall(method, payload = {}) {
+  if (!API_URL) {
+    return Promise.reject(new Error('ไม่พบ API URL'));
   }
-  if (!GAS_API_URL) {
-    return Promise.reject(new Error('ไม่พบ GAS API URL'));
-  }
-  return jsonpRequest(method, payload);
-}
-
-/** Calls the GAS backend through JSONP so GitHub Pages can read the response. */
-function jsonpRequest(method, payload) {
-  return new Promise((resolve, reject) => {
-    const callbackName = `sterileStockCb_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    const script = document.createElement('script');
-    const cleanup = () => {
-      delete window[callbackName];
-      script.remove();
-    };
-
-    window[callbackName] = (response) => {
-      cleanup();
-      if (!response || response.ok === false) {
-        reject(new Error((response && response.error) || 'เกิดข้อผิดพลาดจาก API'));
-        return;
-      }
-      resolve(response.data);
-    };
-
-    const params = new URLSearchParams({
-      action: method,
-      payload: JSON.stringify(payload || {}),
-      callback: callbackName
+  
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // ส่งข้อมูลในรูปแบบ JSON เหมือนที่ Edge Function คาดหวัง
+      body: JSON.stringify({
+        action: method,
+        payload: payload
+      })
     });
-    script.src = `${GAS_API_URL}?${params.toString()}`;
-    script.async = true;
-    script.onerror = () => {
-      cleanup();
-      reject(new Error('ไม่สามารถเรียก GAS API ได้'));
-    };
-    document.head.appendChild(script);
-  });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `การเชื่อมต่อผิดพลาด (Status: ${response.status})`);
+    }
+
+    const result = await response.json();
+    
+    if (result && result.ok === false) {
+      throw new Error(result.error || 'เกิดข้อผิดพลาดจาก API');
+    }
+    
+    return result && result.data !== undefined ? result.data : result;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
 }
 
 /** Extracts a human readable error message. */
